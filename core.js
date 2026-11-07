@@ -57,9 +57,10 @@
       if (!x || typeof x.id !== 'string' || !/^[a-zA-Z0-9_-]{1,100}$/.test(x.id) || ['__proto__','constructor','prototype'].includes(x.id) || ids.has(x.id)) throw new Error('备份条目编号无效或重复。');
       ids.add(x.id); return x.id;
     };
+    const lex = typeof module !== 'undefined' && module.exports ? require('./lexicon.js') : root.ClaroLexicon;
     const words = s.words.map(x => {
       const id = identity(x); if (!clean(x.word, 100) || !clean(x.meaning, 300)) throw new Error('词汇缺少单词或释义。');
-      return { id, word: clean(x.word, 100), meaning: clean(x.meaning, 300), category: clean(x.category, 40) || '我的生词', functions: Array.isArray(x.functions)?[...new Set(x.functions.map(v=>clean(v,40)).filter(Boolean))].slice(0,10):[], unitId: clean(x.unitId,100), level: /^[ABC][12]$/.test(x.level) ? x.level : 'A1', pos: clean(x.pos, 40), example: clean(x.example, 2000), translation: clean(x.translation, 2000), source: clean(x.source, 200), starred: !!x.starred };
+      return { id, word: clean(x.word, 100), meaning: clean(x.meaning, 300), category: clean(x.category, 40) || '我的生词', functions: Array.isArray(x.functions)?[...new Set(x.functions.map(v=>clean(v,40)).filter(Boolean))].slice(0,10):[], unitId: clean(x.unitId,100), level: /^[ABC][12]$/.test(x.level) ? x.level : 'A1', pos: clean(x.pos, 40), example: clean(x.example, 2000), translation: clean(x.translation, 2000), source: clean(x.source, 200), starred: !!x.starred, lexical:lex.metadata(x), contexts:lex.contexts(x.contexts) };
     });
     const articles = s.articles.map(x => {
       const id = identity(x); if (!clean(x.title) || !clean(x.text)) throw new Error('文章缺少标题或正文。');

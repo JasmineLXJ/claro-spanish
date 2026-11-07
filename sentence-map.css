@@ -1,0 +1,84 @@
+/* Sentence roles are color-coded; every color also has a written label. */
+.listening-layout{grid-template-columns:minmax(0,1fr) 380px}
+.sentence-aside{padding:25px;min-width:0}
+.sentence-token{font:inherit;color:inherit;display:inline;padding:0;border:0;background:none;border-radius:3px;cursor:pointer;user-select:text;-webkit-user-select:text;text-align:inherit}
+.sentence-token:hover{background:#f2eac4;text-decoration:underline;text-decoration-color:#c4a74f;text-underline-offset:5px}
+.sentence-token:focus-visible{outline:2px solid #5b83a4;outline-offset:3px}
+.sentence-collect-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px dashed #d7e2e7;padding:13px 0 0;margin-top:17px;font-size:10px;color:#6b8292}
+.sentence-collect-bar>span{overflow-wrap:anywhere;min-width:0}
+.sentence-collect-bar .btn{flex-shrink:0;font-size:10px;padding:7px 10px}
+.map-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:13px}
+.map-heading h3{margin:0!important;color:#3c5b71!important;font-size:12px!important}
+.map-heading>span{font-size:9px;color:#7b8f99}
+.map-stage{display:flex;gap:5px;padding:4px;background:#f1f5f7;border-radius:7px;margin-bottom:15px}
+.map-stage button{flex:1;padding:7px 4px;border-radius:5px;color:#748997;font-size:10px}
+.map-stage button.active{background:white;color:#315777;box-shadow:0 1px 4px #37567612}
+.implicit-subject{border-left:2px dashed #6482ad;margin:10px 0 16px;padding-left:10px}
+.implicit-subject span{font-size:9px;color:#7b90a4;display:block}
+.implicit-subject strong{font-size:12px;font-weight:500;color:#47688f;display:block;margin-top:5px;overflow-wrap:anywhere}
+.sentence-blocks{display:flex;flex-wrap:wrap;align-items:center;gap:8px 5px;line-height:1.4}
+.sentence-block{--role:#607789;--tint:#eef3f6;display:flex;flex-direction:column;align-items:flex-start;gap:6px;background:var(--tint);border:1px solid transparent;border-bottom:3px solid var(--role);border-radius:6px;padding:10px 11px 8px;color:var(--role);max-width:100%;text-align:left}
+.sentence-block strong{font:21px/1.4 var(--serif);overflow-wrap:anywhere;white-space:normal}
+.sentence-block>span{font-size:9px;letter-spacing:.2px}
+.sentence-block:hover,.sentence-block.selected{border-color:var(--role);box-shadow:0 0 0 2px var(--tint)}
+.role-subject{--role:#3d69a0;--tint:#eaf1fb}.role-verb{--role:#a44468;--tint:#f9ecf1}.role-object,.role-nominal{--role:#567343;--tint:#eef4e9}.role-attribute{--role:#795ca2;--tint:#f2eef8}.role-time{--role:#8b691a;--tint:#faf3dc}.role-place{--role:#287889;--tint:#e7f4f5}.role-purpose,.role-infinitive{--role:#925b31;--tint:#f9efe5}.role-companion{--role:#28796c;--tint:#e8f4ef}.role-indirect{--role:#94651d;--tint:#f9f1df}
+.block-join{font-size:11px;color:#b0bcc3}
+.map-reading{background:#f7f9fa;border-radius:7px;padding:12px 13px;margin-top:16px}
+.map-reading>span{font-size:10px;font-weight:600;color:#3f5c70;overflow-wrap:anywhere}
+.map-reading>p{font-size:12px;color:#617988;line-height:1.95;margin:6px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.map-help,.map-stage-note{font-size:9px;line-height:1.8;color:#8295a0;margin-top:12px}
+.sentence-vocab-item{position:relative;padding:12px 30px 12px 0;border-bottom:1px solid #edf1f3}
+.sentence-vocab-item:last-of-type{border:0}
+.sentence-vocab-word{display:flex;align-items:baseline;gap:12px;text-align:left;width:100%;line-height:1.5}
+.sentence-vocab-word strong{font:20px var(--serif);color:#315777;flex-shrink:1;min-width:0;max-width:65%;overflow-wrap:anywhere}
+.sentence-vocab-word span{font-size:11px;color:#667f8f;overflow-wrap:anywhere}
+.sentence-vocab-item>small{font-size:9px;line-height:1.8;color:#8a9aa4;display:block;margin-top:6px}
+.vocab-add{position:absolute;right:0;top:12px;border:1px solid #dbe5ea;border-radius:50%;width:25px;height:25px;color:#456985;background:#f2f7fa}
+.map-editor{border:1px solid #dbe5eb;border-radius:8px;margin-top:20px;padding:15px}
+.map-editor>summary{font-size:12px;color:#3f6078;cursor:pointer}
+.map-editor>.field{margin-top:13px}
+.map-edit-row{padding:15px;background:#f5f8fa;border-radius:6px;margin:14px 0;display:grid;grid-template-columns:1.4fr 1fr;gap:12px}
+.map-edit-row textarea{min-height:60px}
+.map-edit-row>.btn{justify-self:start}
+.lex-check{display:flex;align-items:center;gap:8px;font-size:11px;margin:15px 0}
+.lex-type-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:22px 0}
+.lex-type-tab{padding:8px 12px;border:1px solid #dce5eb;border-radius:7px;font-size:11px;display:flex;gap:8px;color:#69808f;background:#fff}
+.lex-type-tab>span{color:#96a6b0;font-size:10px}
+.lex-type-tab.active{background:#315777;color:white;border-color:#315777}.lex-type-tab.active>span{color:#c7d7e2}
+.vocab-toolbar{flex-wrap:wrap}.vocab-toolbar .search-box{min-width:220px;flex:1}
+.lex-filters{display:flex;gap:18px;padding:16px 20px;align-items:flex-end;margin:0 0 22px;flex-wrap:wrap;box-shadow:none}
+.lex-filter{display:grid;gap:7px;min-width:140px;flex:1;max-width:300px}
+.lex-filter>span{font-size:9px;letter-spacing:.5px;color:#7e919d}
+.lex-filter select{font:11px var(--sans);border:1px solid #dce5eb;padding:9px;background:#fff;border-radius:6px;color:#416279;width:100%}
+.lex-sidebar-label{font-size:9px;color:#91a1ab;display:block;padding:8px 15px 14px;letter-spacing:1px}
+.matched-forms{display:grid;gap:4px;margin-top:8px}
+.matched-forms>span{display:block;font-size:10px;color:#6c8390;line-height:1.6;overflow-wrap:anywhere}
+.matched-forms b{font:17px var(--serif);color:#a44468}
+.word-button small{white-space:normal;overflow-wrap:anywhere;line-height:1.8}
+.lexical-fields{margin:0;border:1px solid #d9e4e9;border-radius:7px;padding:15px;min-width:0}
+.lexical-fields[hidden]{display:none}
+.lexical-fields>legend{font-size:11px;padding:0 5px;color:#537185}
+.lex-checks{display:flex;gap:10px 14px;flex-wrap:wrap;margin:13px 0}
+.lex-checks>label{font-size:11px;display:flex;align-items:center;gap:6px;color:#65808f}
+.lex-checks input{accent-color:#315777}
+.word-capture-context{background:#edf3f7;padding:17px 20px;border-radius:8px;margin-bottom:22px}
+.word-capture-context>strong{display:block;font:29px var(--serif);color:#315777;margin:9px 0}
+.word-capture-context>span:not(.eyebrow){font-size:11px;color:#a44468;display:block;line-height:1.8}
+.word-capture-context>p{font:16px/1.8 var(--serif);color:#648093;margin:10px 0 0}
+.word-capture-context>.info-note{font:11px/1.8 var(--sans)}
+.lex-detail-tags{display:flex;flex-wrap:wrap;gap:7px;margin:12px 0 20px}
+.verb-form-tables details{border:1px solid #dce6eb;border-radius:7px;margin:15px 0;overflow:hidden}
+.verb-form-tables summary{padding:13px 16px;background:#edf3f7;font-size:11px;color:#496b83;cursor:pointer}
+.lex-conj-row{display:grid;grid-template-columns:1fr 1fr auto;gap:12px;padding:10px 16px;align-items:center;border-top:1px solid #edf1f3}
+.lex-conj-row>span{font-size:10px;color:#7c909d;overflow-wrap:anywhere}
+.lex-conj-row>strong{font:21px var(--serif);color:#a44468;overflow-wrap:anywhere}
+.lex-conj-row .btn{padding:6px;border:0;box-shadow:none}
+.word-occurrences{margin:20px 0}.word-occurrences h3{font-size:12px;color:#527086}
+.word-occurrences article{border-left:2px solid #d4e2eb;margin:15px 0;padding:0 0 0 13px}
+.word-occurrences article>span{font-size:9px;color:#8195a2}
+.word-occurrences p{font:18px/1.8 var(--serif);color:#53778e;margin:6px 0}
+.word-occurrences a{font-size:10px}
+@media(max-width:1250px){.listening-layout{grid-template-columns:minmax(0,1fr) 340px}.sentence-aside{padding:22px}.sentence-collect-bar{align-items:flex-start;flex-direction:column;gap:9px}}
+@media(max-width:1100px){.listening-layout{grid-template-columns:minmax(0,1fr)}.listening-main{display:contents}.listening-player{grid-row:1}.practice-card{grid-row:2}.sentence-aside{position:static;grid-row:3}.transcript{grid-row:4}.sentence-collect-bar{flex-direction:row;align-items:center}}
+@media(max-width:700px){.lex-type-tabs{gap:6px}.lex-type-tab{padding:7px 10px;font-size:10px}.lex-filters{padding:15px;gap:12px}.lex-filter{min-width:calc(50% - 10px);max-width:none}.lex-filters>.btn{width:100%}.vocab-toolbar .search-box{min-width:100%}.sentence-aside{padding:22px}.sentence-block strong{font-size:21px}.sentence-block{padding:10px}.sentence-collect-bar{gap:10px}.map-edit-row{grid-template-columns:1fr}.map-edit-row>.full{grid-column:auto}.word-capture-context{padding:16px}.lex-conj-row{padding:10px;gap:7px}.lex-conj-row>strong{font-size:19px}.lexical-fields{padding:12px}.lex-filter select{max-width:100%}.vocab-table .table-title{gap:10px;flex-wrap:wrap}}
+@media(prefers-reduced-motion:reduce){.sentence-block,.sentence-token{transition:none}}

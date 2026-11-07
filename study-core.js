@@ -14,7 +14,8 @@
     const ids=new Set();let previous=-1;
     return rows.map((x,i)=>{const start=Number(x.start),end=Number(x.end),text=clean(x.text,4000),id=x.id||'c'+i;
       if(!ident(id)||ids.has(id)||!Number.isFinite(start)||!Number.isFinite(end)||start<0||end<=start||end>21600||start<previous||!text)throw new Error('字幕需要按时间排序，每句结束时间应晚于开始时间，编号不能重复。');
-      ids.add(id);previous=start;return {id,start,end,text,translation:clean(x.translation,4000),explanation:clean(x.explanation,8000),grammarIds:[...new Set((Array.isArray(x.grammarIds)?x.grammarIds:[]).filter(ident))].slice(0,30)};
+      const analysisCore=typeof module!=='undefined'&&module.exports?require('./analysis-core.js'):root.ClaroAnalysis;
+      ids.add(id);previous=start;return {id,start,end,text,translation:clean(x.translation,4000),explanation:clean(x.explanation,8000),analysis:analysisCore.validate(x.analysis,text),grammarIds:[...new Set((Array.isArray(x.grammarIds)?x.grammarIds:[]).filter(ident))].slice(0,30)};
     });
   }
   function parseSubtitles(raw){
@@ -55,7 +56,9 @@
   }
   function search(query,data){
     const terms=fold(query).split(' ').filter(Boolean);if(!terms.length)return [];
-    const rows=[...(data.questions||[]).map(b=>({kind:'questions',id:b.id,title:b.title,body:[b.source.text,...b.messages.map(m=>m.text)].join(' ')})),...data.words.map(w=>({kind:'words',id:w.id,title:w.word,body:[w.meaning,w.category,...(w.functions||[]),w.example,w.translation].join(' ')})),...data.articles.map(a=>({kind:'reading',id:a.id,title:a.title,body:[a.subtitle,a.category,a.text,a.translation].join(' ')})),...data.grammar.map(g=>({kind:'grammar',id:g.id,title:g.title,body:[g.es,g.summary,g.body,...g.examples.flat()].join(' ')})),...data.notes.map(n=>({kind:'notes',id:n.id,title:n.title,body:[n.category,n.body].join(' ')})),...Object.entries(data.verbs).map(([id,v])=>({kind:'verbs',id,title:id,body:[v.meaning,v.type,...v.forms].join(' ')})),...data.lessons.flatMap(l=>l.cues.map(c=>({kind:'listening',id:l.id,cueId:c.id,title:l.title,body:[c.text,c.translation,c.explanation].join(' ')})))];
+    const analysisCore=typeof module!=='undefined'&&module.exports?require('./analysis-core.js'):root.ClaroAnalysis;
+    const cueContent=c=>{const a=analysisCore.resolve(c);return [c.text,c.translation||a?.translation,c.explanation||a?.focus,...(a?.parts||[]).map(p=>p.note)].join(' ');};
+    const rows=[...(data.questions||[]).map(b=>({kind:'questions',id:b.id,title:b.title,body:[b.source.text,...b.messages.map(m=>m.text)].join(' ')})),...data.words.map(w=>({kind:'words',id:w.id,title:w.word,body:[w.meaning,w.category,...(w.functions||[]),w.example,w.translation,...((typeof module!=='undefined'&&module.exports?require('./lexicon.js'):root.ClaroLexicon).formsFor(w).map(f=>f.form)),...(w.lexical?.topics||[]),w.lexical?.lemma].join(' ')})),...data.articles.map(a=>({kind:'reading',id:a.id,title:a.title,body:[a.subtitle,a.category,a.text,a.translation].join(' ')})),...data.grammar.map(g=>({kind:'grammar',id:g.id,title:g.title,body:[g.es,g.summary,g.body,...g.examples.flat()].join(' ')})),...data.notes.map(n=>({kind:'notes',id:n.id,title:n.title,body:[n.category,n.body].join(' ')})),...Object.entries(data.verbs).map(([id,v])=>({kind:'verbs',id,title:id,body:[v.meaning,v.type,...v.forms].join(' ')})),...data.lessons.flatMap(l=>l.cues.map(c=>({kind:'listening',id:l.id,cueId:c.id,title:l.title,body:cueContent(c)})))];
     return rows.filter(r=>terms.every(t=>fold(r.title+' '+r.body).includes(t))).map(r=>({...r,score:terms.reduce((s,t)=>s+(fold(r.title)===t?20:fold(r.title).includes(t)?8:1),0)})).sort((a,b)=>b.score-a.score);
   }
   const api={fold,youtubeId,parseSubtitles,validateCues,validateLessons,validateProgress,compareDictation,suggestions,search};

@@ -13,7 +13,7 @@
     const stamp=n=>{const ms=Math.round(n*1000);return [Math.floor(ms/3600000),Math.floor(ms/60000)%60,Math.floor(ms/1000)%60].map(x=>String(x).padStart(2,'0')).join(':')+','+String(ms%1000).padStart(3,'0');};
     if(format==='json')return JSON.stringify({title:lesson.title,level:lesson.level,source:lesson.source,cues:lesson.cues},null,2);
     if(format==='srt')return lesson.cues.map((c,i)=>`${i+1}\n${stamp(c.start)} --> ${stamp(c.end)}\n${c.text}${c.translation?'\n'+c.translation:''}`).join('\n\n')+'\n';
-    return [lesson.title,lesson.source?'来源：'+lesson.source:'',...lesson.cues.map((c,i)=>`\n${i+1}. [${stamp(c.start).slice(0,-4)}]\n${c.text}\n${c.translation||'（尚无译文）'}\n\n为什么这样说：\n${c.explanation||'（尚无讲解）'}`)].filter(Boolean).join('\n');
+    return [lesson.title,lesson.source?'来源：'+lesson.source:'',...lesson.cues.map((c,i)=>`\n${i+1}. [${stamp(c.start).slice(0,-4)}]\n${c.text}\n${c.translation||'（尚无译文）'}\n\n为什么这样说：\n${c.explanation||'（尚无讲解）'}${c.analysis?'\n\n句子结构：\n'+c.analysis.parts.map(p=>p.text+' · '+p.role+'：'+p.note).join('\n')+'\n'+c.analysis.focus:''}`)].filter(Boolean).join('\n');
   }
   const api={source,validate,lessonExport};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.ClaroQuestionsCore=api;
 })(typeof window!=='undefined'?window:globalThis);

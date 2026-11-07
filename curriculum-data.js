@@ -13,8 +13,8 @@ const COURSE_UNITS = [
 const COURSE_BASE='https://www.masterspanishacademy.com/products/from-zero-to-spanish-hero-2-0';
 const GRAMMAR_GROUPS={
  '交际与句型':['g5','g7','g17','g18'],
- '句子与连接':['g2','g4','g8','g10','g11','g13','g14'],
- '词形与配合':['g1','g3','g6','g12'],
+ '句子与连接':['g19','g2','g4','g8','g10','g11','g13','g14'],
+ '词形与配合':['g20','g1','g3','g6','g12'],
  '时态初识':['g15','g16']
 };
 const STARTER_EXPRESSIONS = [
@@ -51,4 +51,9 @@ const U01_PRACTICE = [
 GRAMMAR.push(
  {id:'g17',title:'问候中的 tú 与 usted',es:'¿Cómo estás? / ¿Cómo está?',summary:'先辨认关系，再选择自然的问候',body:'和熟悉的人交谈，常用 tú 对应的 ¿Cómo estás?。使用 usted 表达礼貌时，常用 ¿Cómo está?。礼貌程度与具体国家、关系和场合有关，不必把年龄当作唯一规则。问候时段也随当地习惯变化；不要死记全球统一的小时分界。Buenas noches 既可以用于晚间见面，也可以用于告别或就寝。',examples:[['Hola, ¿cómo estás?','你好，你好吗？'],['Buenas tardes, ¿cómo está?','下午好，您好吗？']]},
  {id:'g18',title:'听不懂时，用句型澄清',es:'¿Qué significa…? / ¿Puedes repetir?',summary:'问词义、问说法、请对方重复',body:'¿Qué significa…? 用来问某个词是什么意思；¿Cómo se dice… en español? 用来问某种意思用西语怎么表达。¿Puedes repetir? 是请求对方重复，puedes 后接动词原形 repetir。先把这些表达作为完整词块练熟，可以减少临时组句的负担。',examples:[['¿Qué significa «cuaderno»?','cuaderno 是什么意思？'],['¿Puedes repetir, por favor?','你能再说一遍吗？']]}
+);
+
+GRAMMAR.push(
+ {id:'g19',title:'先找主干，再加修饰',es:'Sujeto, verbo y complementos',summary:'词性是词的类别，句子成分是它在这句话里的工作',body:'先找变位动词，再判断主语和动词需要的补语。西语主语可以省略，也可以放在动词后。不要把动词后面的所有名词都看作宾语：Caben los ingredientes 中，los ingredientes 是主语。系动词 ser/estar 后可以接表语；hay 的存在用法没有普通人称主语。时间、地点、目的等成分补充信息，位置可以变化，不必套固定的“主语—时间—地点—动词—宾语”顺序。字幕片段要连着上下句看。',examples:[['Yo preparo la comida en casa.','我在家做饭：主语 + 谓语 + 宾语 + 地点。'],['Caben los ingredientes.','食材放得下：谓语在前，主语在后。']]},
+ {id:'g20',title:'名词从哪些角度分类？',es:'Clases de sustantivos',summary:'阴阳性、数量、含义类型和主题分别记录',body:'名词可以按普通／专有、具体／抽象、可数／不可数、集合等不同维度描述，并另外记录阴阳性和单复数。这些维度可以交叉，不能当成互相排斥的一列选项。可数性还会随词义变化：café 可指咖啡这种饮品，也可指一杯咖啡或一家咖啡馆。主题标签帮助检索，例如食物、厨房或交通；主题不是语法类别。',examples:[['una zanahoria / dos zanahorias','胡萝卜：普通、具体、可数、阴性；可归食物主题。'],['agua / un vaso de agua','水常用不可数用法；一杯是数量容器，agua 仍是阴性。']]}
 );
