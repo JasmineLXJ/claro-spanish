@@ -1,0 +1,85 @@
+/* Learning targets, constrained daily-life cloze prompts and portable practice records. */
+(function(root){
+  'use strict';
+  const node=typeof module!=='undefined'&&module.exports,L=node?require('./lexicon.js'):root.ClaroLexicon,D=node?require('./application-data.js'):root.ClaroApplicationData,Q=node?require('./questions-core.js'):root.ClaroQuestionsCore;
+  const clean=(v,n=100)=>typeof v==='string'?v.trim().slice(0,n):'';
+  const ident=v=>typeof v==='string'&&/^[a-zA-Z0-9_-]{1,100}$/.test(v)&&!['__proto__','constructor','prototype'].includes(v);
+  const norm=v=>String(v??'').normalize('NFC').toLocaleLowerCase('es').replace(/[¡¿!?.,;:«»“”]/gu,'').replace(/\s+/g,' ').trim();
+  const hash=v=>{let h=2166136261;for(const c of v)h=Math.imul(h^c.charCodeAt(0),16777619);return (h>>>0).toString(36);};
+  function targetWord(w,source={}){const lexical=L.metadata(w);return {id:'word_'+hash(lexical.part+'|'+(lexical.lemma||norm(w.word))),kind:'word',key:lexical.lemma||w.word,label:w.word,word:{word:w.word,meaning:w.meaning,example:w.example||source.text||'',translation:w.translation||source.translation||'',pos:w.pos||'',lexical},grammarIds:[],sources:[Q.source(source)],addedAt:Date.now()};}
+  function targetGrammar(g,source={}){return {id:'grammar_'+g.id,kind:'grammar',key:g.id,label:g.title,word:null,grammarIds:[g.id],sources:[Q.source(source)],addedAt:Date.now()};}
+  function validateTarget(t){if(!t||!ident(t.id)||!['grammar','word'].includes(t.kind)||!clean(t.label,150))throw new Error('应用练习的学习目标无效。');let word=null;if(t.kind==='word'){if(!t.word||!clean(t.word.word))throw new Error('应用练习缺少词语。');word={word:clean(t.word.word),meaning:clean(t.word.meaning,300),example:clean(t.word.example,2000),translation:clean(t.word.translation,2000),pos:clean(t.word.pos,100),lexical:L.metadata(t.word)};}return {id:t.id,kind:t.kind,key:clean(t.key),label:clean(t.label,150),word,grammarIds:(Array.isArray(t.grammarIds)?t.grammarIds:[]).filter(x=>/^g\d+$/.test(x)).slice(0,30),sources:(Array.isArray(t.sources)?t.sources:[]).slice(-6).map(Q.source),addedAt:Number.isFinite(t.addedAt)?t.addedAt:0};}
+  function exercise(row,target,id){return {...row,id:id||row.id,targetId:target.id,targetLabel:target.label,answers:row.answers||[row.answer],grammarIds:row.grammarIds||target.grammarIds||[],mode:row.mode||'transfer'};}
+  function verbPool(t){const m=L.metadata(t.word),lemma=m.lemma;
+    if(lemma==='gustar')return D.bank.g5.map(q=>exercise(q,t,'verb_gustar_'+q.id));
+    return (D.frames[lemma]||[]).flatMap((r,i)=>{const form=L.conjugate(lemma).find(x=>x.person===r[0]);if(!form)return [];return [exercise({scene:r[1],prompt:`用 ${lemma} 的现在时补全：${r[3]}`,sentence:r[2],answers:[form.form],hint:`主语对应 ${r[0]}，只改变 ${lemma} 的形式。`,why:`${lemma} 的 ${r[0]} 现在时形式是 ${form.form}。${lemma==='haber'?'这里作助动词，与后面的过去分词构成现在完成时。':''}`,grammarIds:[({haber:'g16',llamarse:'g7',ser:'g2',estar:'g2',tener:'g9',ir:'g8',querer:'g10',poder:'g10',caber:'g19'})[lemma]||'g3']},t,'verb_'+lemma+'_'+i)];});
+  }
+  function nounPool(t){const w=t.word,m=L.metadata(w),n=L.lookup(m.lemma),lemma=m.lemma||L.stripArticle(w.word),female=m.gender==='feminine',a=female?'la':'el',u=female?'una':'un',plural=n?.plural;
+    if(!lemma||m.gender==='unknown')return [];
+    const make=(i,scene,prompt,sentence,answer,hint,why,gids=['g1'])=>exercise({scene,prompt,sentence,answers:[answer],hint,why,grammarIds:gids},t,'noun_'+hash(lemma)+'_'+i);
+    if(lemma==='hambre')return [make(0,'午饭前','用“饥饿”补全：我饿了。','Tengo ___.','hambre','tener hambre 是固定表达。','这里说 tener hambre，不需要冠词。',['g9']),make(1,'问朋友','用“饥饿”补全：你饿了吗？','¿Tienes ___?','hambre','和 tener 一起记。','动词随 tú 变化，hambre 不变。',['g9']),make(2,'下班后','用“饥饿”补全：我们饿了。','Tenemos ___.','hambre','我们有饥饿感。','tener 的 nosotros 形式是 tenemos。',['g9'])];
+    if(['cabeza','diente'].includes(lemma))return [make(0,'准备晚饭',`填入“${lemma==='cabeza'?'头':'瓣'}”：需要一${lemma==='cabeza'?'头':'瓣'}蒜。`,`Necesito ${u} ___ de ajo.`,lemma,'把量词和 de ajo 一起记。','de ajo 说明指的是大蒜。'),make(1,'列购物单',`填入 ${lemma} 的复数，表示两${lemma==='cabeza'?'头':'瓣'}蒜。`,'Necesito dos ___ de ajo.',plural,'dos 后需要复数名词。','数词 dos 后用复数。'),make(2,'准备食材',`补上“这一${lemma==='cabeza'?'头':'瓣'}蒜”的中心词。`,`Uso ${female?'esta':'este'} ___ de ajo.`,lemma,`${female?'esta':'este'} 后面用单数。`,'限定词与名词的性数配合。')];
+    if(lemma==='tamaño')return [make(0,'买衣服','用“尺码”补全。','Este ___ es perfecto.','tamaño','回想尺寸这个名词。','tamaño 是尺寸、大小。'),make(1,'换尺码','用“尺码”补全。','¿Tienes otro ___?','tamaño','另一个尺码仍是单数。','otro tamaño 表示另一个尺码。'),make(2,'挑背包','用“尺寸”补全。','Necesito un ___ más grande.','tamaño','más grande 修饰尺寸。','un tamaño más grande 是更大的尺寸。',['g12'])];
+    if(lemma==='polvo')return [make(0,'买调料','用“粉末”补全：买蒜粉。','Compro ajo en ___.','polvo','en polvo 表示粉末状。','ajo en polvo 是蒜粉。'),make(1,'准备早餐','用“粉末”补全：奶粉。','Uso leche en ___.','polvo','把 en polvo 整体回想。','leche en polvo 是奶粉。'),make(2,'准备晚饭','用“粉末”补全：这调料是粉末状的。','Esta especia está en ___.','polvo','这里表示形态。','en polvo 说明是粉末状。')];
+    const human=['madre','padre','hermano','hermana','amigo','amiga','estudiante','familia'].includes(lemma),place=['casa','calle','ciudad','estación','mercado','plaza','biblioteca','restaurante'].includes(lemma),time=['día','semana','año'].includes(lemma),material=lemma==='metal',food=m.topics.some(x=>/食物|饮食/.test(x)),mass=(m.nounTypes.includes('uncountable')&&!m.nounTypes.includes('countable'))||['proteína','comida','pan'].includes(lemma);
+    let rows;
+    if(human)rows=[['认识新朋友',`用“${w.meaning}”补全。`,'Mi ___ vive aquí.',lemma],['朋友聊天',`用 ${lemma} 的复数补全。`,`${female?'Las':'Los'} ___ viven cerca.`,plural],['说到家人',`补上“${w.meaning}”前的定冠词。`,'___ '+lemma+' está aquí.',a]];
+    else if(place)rows=[['问路',`用“${w.meaning}”补全。`,`${a[0].toUpperCase()+a.slice(1)} ___ está cerca.`,lemma],['出门找地方',`用“${w.meaning}”补全。`,`Busco ${u} ___.`,lemma],['介绍街区',`用 ${lemma} 的复数补全。`,'Hay dos ___ aquí.',plural]];
+    else if(time)rows=[['安排一周',`用“${w.meaning}”补全。`,`${female?'Esta':'Este'} ___ trabajo en casa.`,lemma],['约下次见面',`用 ${lemma} 的复数补全。`,'Nos vemos en dos ___.',plural],['空闲时间',`补上不定冠词，表示一个${w.meaning}。`,'Tengo ___ '+lemma+' libre.',u]];
+    else if(material)rows=[['聊桌子的材质','用“金属”补全。','La mesa es de ___.',lemma],['买材料','用“金属”补全。','Compro un poco de ___.',lemma],['问材质','用“金属”补全。','¿Es de ___?',lemma]];
+    else if(food&&mass)rows=[['做晚饭',`用“${w.meaning}”补全。`,'Esta receta lleva ___.',lemma],['买食材',`用“${w.meaning}”补全。`,'Compro un poco de ___.',lemma],['准备晚餐',`用“${w.meaning}”补全。`,'Para cocinar necesito ___.',lemma]];
+    else if(food)rows=[['买食材',`用“${w.meaning}”补全。`,`Quiero ${u} ___.`,lemma],['准备晚饭',`用 ${lemma} 的复数补全。`,'Necesito dos ___.',plural],['找食材',`补上“${w.meaning}”前的定冠词。`,'¿Dónde está ___ '+lemma+'?',a]];
+    else rows=[[/烹饪|厨房/.test(m.topics.join(' '))?'厨房里':/课堂|学习|家居/.test(m.topics.join(' '))?'学习前':'准备东西',`用“${w.meaning}”补全。`,`Uso ${u} ___ en casa.`,lemma],['准备两份',`用 ${lemma} 的复数补全。`,'Necesito dos ___.',plural],['找东西',`补上“${w.meaning}”前的定冠词。`,'¿Dónde está ___ '+lemma+'?',a]];
+    if(human)rows[2]=['认识新同事',`补上“${w.meaning}”前的定冠词。`,'___ '+lemma+' está aquí.',a];
+    // Feminine stressed-a nouns keep their gender, with el/un in singular adjacency.
+    if(['agua'].includes(lemma)){rows[2]=['找饮用水','补上 agua 前的单数定冠词。','¿Dónde está ___ agua?','el'];}
+    return rows.filter(r=>r[3]).map((r,i)=>{const q=make(i,...r,i===1&&r[3]===plural?'数量变了，名词也要检查单复数。':`词典原形是 ${lemma}；这里按提示回想词义和搭配。`,i===1&&r[3]===plural?`${lemma} 的复数是 ${plural}。`:`这句话使用 ${r[3]}。注意原句里的冠词或数量提示。`);if(m.gender==='common'&&i===2)q.answers=['el','la'];return q;});
+  }
+  function expressionPool(t){const k=norm(t.word.word).replace(/…/gu,'').trim(),rows=Object.entries(D.expressions).find(([key])=>norm(key)===k)?.[1];if(rows)return rows.map((r,i)=>exercise({scene:r[0],prompt:r[1],sentence:r[2],answers:[r[3]],hint:`意思是“${t.word.meaning}”。先回想完整词块。`,why:`这里可以说：${r[2].replace('___',r[3])}`,grammarIds:['g17']},t,'expression_'+hash(k)+'_'+i));
+    const extra={
+      'qué tal':[['同事见面','用 tal 补全“最近怎么样”。','¿Qué ___?','tal'],['朋友聊天','补上“什么”，问最近怎么样。','¿___ tal?','Qué'],['走进办公室','补上完整问候“最近怎么样”。','Hola, ¿___?','qué tal']],
+      'cómo estás':[['和朋友聊天','明确对 tú 问“你好吗”。','¿Cómo ___?','estás'],['见到朋友','补上“怎么样”，问朋友近况。','¿___ estás?','Cómo'],['打招呼','用完整词块问“你好吗”。','Hola, ¿___?','cómo estás']],
+      'cómo está':[['见到老师','明确对 usted 问“您好吗”。','¿Cómo ___?','está'],['拜访客户','补上“怎么样”，问候对方。','¿___ está?','Cómo'],['下午问候','补上完整词块“您好吗”。','Buenas tardes, ¿___?','cómo está']],
+      'cómo te llamas':[['认识朋友','用 llamarse 的正确形式问名字。','¿Cómo te ___?','llamas'],['新同事见面','补上 tú 对应的代词。','¿Cómo ___ llamas?','te'],['介绍自己后','补上完整词块“你叫什么名字”。','Me llamo Ana. ¿___?','cómo te llamas']],
+      'puedes repetir':[['没听清菜单','用 repetir 的正确形式。','¿Puedes ___?','repetir'],['听不清同事','用 poder 的 tú 形式。','¿___ repetir?','Puedes'],['请求再说一次','补上“你能重复吗”。','¿___, por favor?','puedes repetir']],
+      'qué significa':[['看菜单','问 café 是什么意思。','¿Qué ___ «café»?','significa'],['课上见到新词','问 cuaderno 是什么意思。','¿Qué ___ «cuaderno»?','significa'],['看购物清单','问 cuchillo 是什么意思。','¿Qué ___ «cuchillo»?','significa']],
+      'cómo se dice':[['上课提问','问这个用西语怎么说。','¿Cómo se ___ esto en español?','dice'],['向同事请教','补上完整词块“怎么说”。','¿___ esto en español?','cómo se dice'],['回想句型','补上 se。','¿Cómo ___ dice esto?','se']]
+    };
+    return (extra[k]||[]).map((r,i)=>exercise({scene:r[0],prompt:r[1],sentence:r[2],answers:[r[3]],hint:'先回想在课程里遇到的完整句型。',why:r[2].replace('___',r[3]),grammarIds:[k.includes('llamas')?'g7':k.includes('dice')||k.includes('significa')||k.includes('repetir')?'g18':'g17']},t,'expression_'+hash(k)+'_'+i));
+  }
+  function adjectivePool(t){
+    const m=L.metadata(t.word),forms={pequeño:['pequeña','pequeño','pequeños'],grande:['grande','grande','grandes'],tranquilo:['tranquila','tranquilo','tranquilos'],rojo:['roja','rojo','rojos'],amarillo:['amarilla','amarillo','amarillos'],importante:['importante','importante','importantes'],favorito:['favorita','favorito','favoritos'],listo:['lista','listo','listos'],rico:['rica','rico','ricos'],bueno:['buena','bueno','buenos'],perfecto:['perfecta','perfecto','perfectos']}[m.lemma];
+    if(!forms)return [];
+    let sentences=['La casa es ___.','El libro es ___.','Los libros son ___.'];
+    if(['rojo','amarillo'].includes(m.lemma))sentences=['La camisa es ___.','El bolso es ___.','Los bolsos son ___.'];
+    if(m.lemma==='favorito')sentences=['Esta es mi comida ___.','Este es mi libro ___.','Estos son mis libros ___.'];
+    if(m.lemma==='listo')sentences=['Ana está ___ para salir.','Pablo está ___ para salir.','Ellos están ___ para salir.'];
+    if(['rico','bueno'].includes(m.lemma))sentences=['La sopa está ___.','El café está ___.','Los tomates están ___.'];
+    return sentences.map((sentence,i)=>exercise({scene:['在家聊天','说到日常物品','只换成复数'][i],prompt:`用 ${m.lemma}（${t.word.meaning}）的恰当形式补全。`,sentence,answers:[forms[i]],hint:`修饰的词是${i===0?'阴性单数':i===1?'阳性单数':'阳性复数'}。`,why:`${m.lemma} 在这里用 ${forms[i]}，与所描述的人或事物配合。`,grammarIds:['g6']},t,'adjective_'+m.lemma+'_'+i));
+  }
+  function sourcePool(t){if(!t.word)return [];const sentence=t.word.example||t.sources.find(s=>s.text)?.text||'',surface=t.word.word.replace(/^(?:el|la|los|las) /u,''),index=norm(sentence).indexOf(norm(surface));if(!surface||index<0)return [];const escaped=surface.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),pattern=new RegExp('(?<![\\p{L}\\p{M}])'+escaped+'(?![\\p{L}\\p{M}])','iu'),match=sentence.match(pattern);if(!match)return [];return [exercise({scene:'回到来源句',prompt:t.word.translation||'把这个词填回你收录的原句。',sentence:sentence.replace(pattern,'___'),answers:[match[0]],hint:t.word.meaning||'回想原句中的词形。',why:'这个词暂未配上已核对的新场景，先练来源句；可以通过学习问答继续造句。',mode:'source'},t,'source_'+hash(sentence+surface))];}
+  function pool(t){let rows=t.kind==='grammar'?(D.bank[t.key]||[]).map(q=>exercise(q,t)):L.metadata(t.word).part==='verb'?verbPool(t):L.metadata(t.word).part==='noun'?nounPool(t):L.metadata(t.word).part==='adjective'?adjectivePool(t):expressionPool(t);if(!rows.length)rows=sourcePool(t);return rows.filter(q=>q.sentence.split('___').length===2&&q.answers.length&&q.answers.every(a=>typeof a==='string'&&a.trim()));}
+  function grade(input,q){const value=norm(input),correct=q.answers.some(a=>norm(a)===value),fold=v=>norm(v).normalize('NFD').replace(/[\u0300-\u036f]/gu,'');return {correct,accentOnly:!correct&&q.answers.some(a=>fold(a)===fold(input)),completed:q.sentence.replace('___',q.answers[0])};}
+  function review(application,targetId,now=Date.now()){
+    const records=application.attempts.filter(a=>a.targetId===targetId),latest=new Map();for(const a of records)latest.set(a.exerciseId,a);
+    const weak=[...latest.values()].filter(a=>!a.correct||a.usedHint||a.revealed),due=records.length?Math.min(...[...latest.values()].map(a=>a.due)):0;
+    return {attempts:records.length,independent:records.filter(a=>a.correct&&!a.usedHint&&!a.revealed).length,weak:weak.length,due,dueNow:due<=now};
+  }
+  function plan(application,ids,random=Math.random){const selected=application.targets.filter(t=>ids.includes(t.id));let items=[];const pools=selected.map(t=>{const all=pool(t),latest=new Map();for(const a of application.attempts.filter(a=>a.targetId===t.id))latest.set(a.exerciseId,a);return all.map(q=>({q,priority:latest.has(q.id)?(!latest.get(q.id).correct||latest.get(q.id).usedHint||latest.get(q.id).revealed?0:2):1,tie:random()})).sort((a,b)=>a.priority-b.priority||a.tie-b.tie).map(x=>x.q);});for(let i=0;items.length<3;i++){let added=false;for(const rows of pools){if(rows[i]&&items.length<3){items.push(rows[i]);added=true;}}if(!added)break;}return items;}
+  function record(application,active,index,answer,now=Date.now()){
+    const q=active.items[index],s=active.states[index],id=active.id+'_'+index;const previous=application.attempts.find(a=>a.id===id);if(previous)return previous;
+    const result=grade(answer,q),independent=result.correct&&!s.usedHint&&!s.revealed,old=review(application,q.targetId,now),due=now+(independent?(old.independent>=3?3:1)*86400000:600000);
+    const a={id,targetId:q.targetId,exerciseId:q.id,input:clean(answer,300),correct:result.correct,usedHint:!!s.usedHint,revealed:!!s.revealed,corrected:false,time:now,due,exercise:q};application.attempts.push(a);if(application.attempts.length>10000)application.attempts.splice(0,application.attempts.length-10000);return a;
+  }
+  function validExercise(q){if(!q||!ident(q.id)||!ident(q.targetId)||!clean(q.sentence,1000)||q.sentence.split('___').length!==2||!Array.isArray(q.answers)||!q.answers.some(x=>clean(x,300)))return null;return {id:q.id,targetId:q.targetId,targetLabel:clean(q.targetLabel,150),scene:clean(q.scene,100),prompt:clean(q.prompt,600),sentence:clean(q.sentence,1000),answers:q.answers.map(x=>clean(x,300)).filter(Boolean).slice(0,8),hint:clean(q.hint,500),why:clean(q.why,1500),grammarIds:(Array.isArray(q.grammarIds)?q.grammarIds:[]).filter(x=>/^g\d+$/.test(x)).slice(0,30),mode:q.mode==='source'?'source':'transfer'};}
+  function validate(value){
+    const empty={targets:[],attempts:[],writing:[],active:null};if(!value)return empty;if(typeof value!=='object'||!Array.isArray(value.targets)||value.targets.length>500||!Array.isArray(value.attempts)||value.attempts.length>10000)throw new Error('应用练习记录格式不正确。');
+    const targets=value.targets.map(validateTarget),ids=new Set(targets.map(t=>t.id));if(ids.size!==targets.length)throw new Error('应用练习目标重复。');
+    const seen=new Set(),attempts=value.attempts.map(a=>{const q=validExercise(a?.exercise);if(!a||!ident(a.id)||seen.has(a.id)||!ids.has(a.targetId)||!q||q.targetId!==a.targetId||!Number.isFinite(a.time)||!Number.isFinite(a.due))throw new Error('应用练习作答记录无效。');seen.add(a.id);return {id:a.id,targetId:a.targetId,exerciseId:q.id,input:clean(a.input,300),correct:!!a.correct,usedHint:!!a.usedHint,revealed:!!a.revealed,corrected:!!a.corrected,time:Math.max(0,a.time),due:Math.max(0,a.due),exercise:q};});
+    const writing=(Array.isArray(value.writing)?value.writing:[]).slice(-2000).filter(w=>ident(w?.id)&&clean(w.text,500)).map(w=>({id:w.id,text:clean(w.text,500),targetIds:(Array.isArray(w.targetIds)?w.targetIds:[]).filter(x=>ids.has(x)).slice(0,3),time:Number.isFinite(w.time)?w.time:0}));
+    let active=null,v=value.active;if(v&&ident(v.id)&&Array.isArray(v.items)&&v.items.length<=3&&v.items.length&&Array.isArray(v.states)){
+      const items=v.items.map(validExercise);if(items.every(q=>q&&ids.has(q.targetId))){const states=items.map((q,i)=>{const s=v.states[i]||{};return {input:clean(s.input,300),checked:!!s.checked,correct:!!s.correct,sourceShown:!!s.sourceShown,usedHint:!!s.usedHint,revealed:!!s.revealed,correction:!!s.correction,corrected:!!s.corrected};});active={id:v.id,items,states,index:Math.max(0,Math.min(items.length,Math.floor(Number(v.index)||0))),ownDraft:clean(v.ownDraft,500),startedAt:Number.isFinite(v.startedAt)?v.startedAt:0};}}
+    return {targets,attempts,writing,active};
+  }
+  const api={norm,groups:D.groups,targetWord,targetGrammar,validateTarget,pool,grade,review,plan,record,validate};if(node)module.exports=api;else root.ClaroApplicationCore=api;
+})(typeof window!=='undefined'?window:globalThis);

@@ -79,8 +79,10 @@
       const r = s.reviews[x.id]; return [x.id, { stage: Math.max(0,Math.min(6,Number(r.stage)||0)), due: Math.max(0,r.due), interval: Math.max(0,Number(r.interval)||0), last: Math.max(0,Number(r.last)||0) }];
     }));
     const reading = Object.fromEntries(articles.filter(x => s.reading?.[x.id]).map(x => [x.id, true]));
-    const events = s.events.filter(e => e && Number.isFinite(e.time) && ['review','quiz','read','listen','course'].includes(e.type)).map(e => ({time:e.time,type:e.type,correct:!!e.correct}));
-    return { version:1, words, articles, notes, reviews, reading, events, lessons, listening, questions, courseProgress, settings: { accent: s.settings?.accent === 'es-MX' ? 'es-MX' : 'es-ES', rate: [0.7,0.85,1].includes(Number(s.settings?.rate)) ? Number(s.settings.rate) : 0.85 } };
+    const events = s.events.filter(e => e && Number.isFinite(e.time) && ['review','quiz','read','listen','course','apply'].includes(e.type)).map(e => ({time:e.time,type:e.type,correct:!!e.correct}));
+    const applicationCore=typeof module!=='undefined'&&module.exports?require('./application-core.js'):root.ClaroApplicationCore;
+    const application=applicationCore.validate(s.application);
+    return { version:1, application, words, articles, notes, reviews, reading, events, lessons, listening, questions, courseProgress, settings: { accent: s.settings?.accent === 'es-MX' ? 'es-MX' : 'es-ES', rate: [0.7,0.85,1].includes(Number(s.settings?.rate)) ? Number(s.settings.rate) : 0.85 } };
   }
   const api = { norm, clean, csvParse, csvWords, schedule, safeURL, validateState };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

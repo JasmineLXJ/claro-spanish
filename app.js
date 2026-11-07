@@ -33,7 +33,7 @@
   } catch {
     state = freshState(); storageIssue = '本地数据未能读取。当前使用初始内容；可在设置中导入此前导出的备份。';
   }
-  function freshState() { return { version:1, words:SEED_WORDS.map(w=>({...structuredClone(w),lexical:ClaroLexicon.metadata(w)})), articles:structuredClone(SEED_ARTICLES), notes:[], reviews:{}, reading:{}, events:[], lessons:structuredClone(SEED_LESSONS), listening:{}, questions:[], courseProgress:{}, settings:{accent:'es-ES',rate:0.85} }; }
+  function freshState() { return { version:1, words:SEED_WORDS.map(w=>({...structuredClone(w),lexical:ClaroLexicon.metadata(w)})), articles:structuredClone(SEED_ARTICLES), notes:[], reviews:{}, reading:{}, events:[], lessons:structuredClone(SEED_LESSONS), listening:{}, questions:[], courseProgress:{}, application:ClaroApplicationCore.validate(),settings:{accent:'es-ES',rate:0.85} }; }
   function persist(message) {
     try { localStorage.setItem(KEY,JSON.stringify(state)); storageIssue=''; if(message) toast(message); return true; }
     catch { storageIssue='浏览器未能保存数据（可能空间已满或禁用存储）。请立即在设置中导出备份；当前修改暂存于本次页面。'; toast(storageIssue); return false; }
@@ -55,9 +55,9 @@
     if (base !== 'practice') session=null;
     if (base === 'practice' && !session) { go('review'); return; }
     const navs = [['home','学习概览'],['course','课程路线'],['words','我的词库'],['reading','阅读空间'],['listening','听说工作室'],['grammar','语法手帐'],['questions','学习问答'],['verbs','动词变位'],['review','复习与测试']];
-    $('#nav').innerHTML=navs.map(([p,t])=>`<a href="#${p}" class="nav-item ${(base===p||(p==='reading'&&base==='reader')||(p==='listening'&&base==='listen')||(p==='review'&&base==='practice'))?'active':''}" ${base===p?'aria-current="page"':''}>${icon(p==='listening'?'sound':p==='questions'?'reading':p==='course'?'leaf':p)}${t}${p==='review'&&dueWords().length?`<span class="badge">${dueWords().length}</span>`:''}</a>`).join('');
-    $('#page-label').textContent = Object.fromEntries(navs)[base] || ({settings:'设置与数据',reader:'阅读空间',practice:'复习与测试',listen:'听说工作室',search:'全站搜索','question-import':'学习问答'})[base] || '学习概览';
-    const renderers = {home:renderHome,course:()=>curriculum.page(route.split('/')[1],route.split('/')[2]),words:renderWords,reading:renderReading,reader:()=>renderReader(route.split('/')[1]),grammar:renderGrammar,verbs:renderVerbs,review:renderReview,practice:renderSession,settings:renderSettings,search:renderSearch,questions:()=>route.split('/')[1]?questions.page(route.split('/')[1]):questions.library(),'question-import':()=>questions.importPage(route.split('/')[1]),listening:listening.library,listen:()=>listening.workspace(route.split('/')[1],route.split('/')[2])};
+    $('#nav').innerHTML=navs.map(([p,t])=>`<a href="#${p}" class="nav-item ${(base===p||(p==='reading'&&base==='reader')||(p==='listening'&&base==='listen')||(p==='review'&&['practice','apply'].includes(base)))?'active':''}" ${base===p?'aria-current="page"':''}>${icon(p==='listening'?'sound':p==='questions'?'reading':p==='course'?'leaf':p)}${t}${p==='review'&&dueWords().length?`<span class="badge">${dueWords().length}</span>`:''}</a>`).join('');
+    $('#page-label').textContent = Object.fromEntries(navs)[base] || ({settings:'设置与数据',reader:'阅读空间',practice:'复习与测试',apply:'场景小练习',listen:'听说工作室',search:'全站搜索','question-import':'学习问答'})[base] || '学习概览';
+    const renderers = {apply:()=>location.hash.split('/')[1]==='practice'?application.session():application.page(),home:renderHome,course:()=>curriculum.page(route.split('/')[1],route.split('/')[2]),words:renderWords,reading:renderReading,reader:()=>renderReader(route.split('/')[1]),grammar:renderGrammar,verbs:renderVerbs,review:renderReview,practice:renderSession,settings:renderSettings,search:renderSearch,questions:()=>route.split('/')[1]?questions.page(route.split('/')[1]):questions.library(),'question-import':()=>questions.importPage(route.split('/')[1]),listening:listening.library,listen:()=>listening.workspace(route.split('/')[1],route.split('/')[2])};
     $('#main').innerHTML = (storageIssue?`<div class="notice" role="alert">${esc(storageIssue)}</div>`:'') + (renderers[base]||renderHome)();
     document.querySelectorAll('[data-icon]').forEach(el=>el.innerHTML=icon(el.dataset.icon));
     document.title=`${$('#page-label').textContent} · Claro`;
@@ -124,10 +124,7 @@
     return `<h3>这次遇见</h3><div class="selected-word" lang="es">${esc(selected.text)}</div><p class="context" lang="es">${esc(selected.context)}</p>${known?`<p>${esc(known.meaning)} <span class="tag">${esc(known.category)}</span></p>${btn(`${icon('sound')} 听发音`,'speak',`data-text="${esc(selected.text)}"`)}${btn(`${icon('check')} 已在词库 · 查看`,'word-detail',`data-id="${known.id}"`,'soft')}`:
     `<form id="selection-form"><label class="field">收录词形 / 原形<input name="word" required maxlength="100" value="${esc(selected.text)}"></label><label class="field">中文释义<input name="meaning" placeholder="写下这个语境中的意思" required maxlength="300"></label><label class="field">放入分类<select name="category">${catOptions(a.category)}</select></label><button class="btn primary" type="submit">${icon('plus')} 收进词库</button><div class="form-error" role="alert"></div></form>${btn(`${icon('sound')} 听发音`,'speak',`data-text="${esc(selected.text)}"`)}`}<div class="info">变位后的词可改为原形收录，例如 vivo → vivir；原句会照常保留。新词保存后会进入待复习队列。</div>`;
   }
-  function renderGrammar() {
-    return pageTitle('MI CUADERNO','语法手帐','把规则放进例句里，把疑问留在笔记里。',btn(`${icon('plus')} 添加笔记`,'add-note','','primary'))+
-    `<div class="tabs grammar-group-tabs" role="group" aria-label="语法与句型分类">${['全部',...Object.keys(GRAMMAR_GROUPS)].map(group=>`<button class="tab ${filters.grammarGroup===group?'active':''}" data-action="grammar-group" data-value="${esc(group)}">${esc(group)}</button>`).join('')}</div><div class="grammar-layout"><section class="grammar-list">${GRAMMAR.filter(g=>filters.grammarGroup==='全部'||GRAMMAR_GROUPS[filters.grammarGroup]?.includes(g.id)).map((g,i)=>`<details id="entry-${g.id}" class="grammar-item card" ${i===0?'open':''}><summary><span class="grammar-mark">${({g1:'el',g2:'es',g3:'yo',g4:'hay',g5:'me',g6:'-a',g7:'me',g8:'ir',g9:'tú',g10:'+',g11:'para',g12:'más',g13:'que',g14:'lo',g15:'-ía',g16:'he',g17:'tú',g18:'qué',g19:'S+V',g20:'N'})[g.id]||'es'}</span><div><h3>${g.title}</h3><p>${g.summary}</p></div>${icon('chevron')}</summary><div class="grammar-body">${esc(g.body)}</div><div>${g.examples.map(([es,zh])=>`<div class="example-row"><div class="example-copy"><strong lang="es">${esc(es)}</strong><small>${esc(zh)}</small></div><button class="icon-btn" aria-label="朗读 ${esc(es)}" data-action="speak" data-text="${esc(es)}">${icon('sound')}</button></div>`).join('')}</div></details>`).join('')}</section><aside class="notes-side"><div class="section-heading"><h2>我的笔记 <span>${state.notes.length} 条</span></h2></div>${state.notes.length?state.notes.map(n=>`<article id="entry-${n.id}" class="note-card card"><span class="tag">${esc(n.category)}</span><h3>${esc(n.title)}</h3><p>${esc(n.body)}</p>${n.grammarIds?.length?`<div class="note-grammar-links">${n.grammarIds.map(id=>{const g=GRAMMAR.find(g=>g.id===id);return g?`<a class="tag" href="#grammar/${g.id}">${esc(g.title)}</a>`:'';}).join('')}</div>`:''}<div class="note-tools">${n.lessonId&&state.lessons.some(l=>l.id===n.lessonId)?`<a class="text-btn" href="#listen/${n.lessonId}/${n.cueId}">${icon('sound')} 返回原句</a>`:''}<button class="text-btn" data-action="edit-note" data-id="${n.id}">${icon('edit')} 编辑</button></div></article>`).join(''):`<div class="card">${empty('留一个小发现','比如：为什么 agua 前面用 el？',btn('写下第一条笔记','add-note'))}</div>`}</aside></div>`;
-  }
+  function renderGrammar() { return grammarBook.page(location.hash.slice(1).split('/').slice(1)); }
   function renderVerbs() {
     const v=VERBS[filters.verb];
     return pageTitle('LOS VERBOS','动词变位','先熟悉最常见的现在时，再慢慢扩展。',btn('练习变位 '+icon('arrow'),'start-conj','','primary'))+`<div class="conjugation"><div class="toolbar"><span class="tag level">直陈式 · 现在时</span><span class="tiny muted">点击动词切换 · 点击喇叭听发音</span></div><div class="verb-picker">${Object.keys(VERBS).map(w=>`<button class="verb-chip ${filters.verb===w?'active':''}" aria-pressed="${filters.verb===w}" data-action="verb" data-value="${w}">${w}</button>`).join('')}</div><div class="card"><div class="verb-top"><div><h2>${filters.verb}</h2><span>${v.meaning}</span></div><span class="tag">${v.type}</span></div>${v.forms.map((f,i)=>`<div class="conj-row"><span lang="es">${PERSONS[i]}</span><strong lang="es">${f}</strong><button class="icon-btn" aria-label="朗读 ${f}" data-action="speak" data-text="${f}">${icon('sound')}</button></div>`).join('')}</div><p class="info-note">vosotros/as 主要见于西班牙；拉美地区通常以 ustedes 表示复数“你们”，对应第三人称复数变位。当前只提供上面 10 个动词的现在时，后续可加其他时态。</p><p class="info-note">还想记录其他时态或例句？可以放进 <a href="#grammar">语法手帐</a>。</p></div>`;
@@ -135,7 +132,7 @@
   function renderReview() {
     const due=dueWords().length, known=state.words.filter(w=>wordStatus(w)==='known').length, learning=state.words.filter(w=>wordStatus(w)==='learning').length;
     const quizzes=state.events.filter(e=>e.type==='quiz'), correct=quizzes.filter(e=>e.correct).length, total=state.words.length;
-    return pageTitle('RECORDAR Y PRACTICAR','让学过的，留下来。','从“好像认识”，到真正想得起来。')+`<div class="review-options"><article class="review-option card"><div class="option-icon">${icon('review')}</div><h2>词汇闪卡</h2><p>先回想，再翻面。按记忆情况安排下一次复习，保留词语的原句。</p>${btn('开始复习 '+icon('arrow'),'start-cards','',due?'primary':'')}<div class="tiny">${due} 个待学 / 到期 · 每组最多 10 张</div></article><article class="review-option card"><div class="option-icon">${icon('edit')}</div><h2>语境填空</h2><p>把词放回句子里，练习 A1 语法、性数一致与常用表达。</p>${btn('开始填空 '+icon('arrow'),'start-quiz')}<div class="tiny">${QUESTIONS.length} 道内置题 · 每组 6 题</div></article><article class="review-option card"><div class="option-icon">${icon('verbs')}</div><h2>变位小练习</h2><p>从现在时开始，练习常用动词在人称变化时的不同形式。</p>${btn('练习变位 '+icon('arrow'),'start-conj')}<div class="tiny">10 个常用动词 · 每组 6 题</div></article></div><section class="progress-card card"><h3>我的词汇状态 <span class="tiny muted">按闪卡自评记录</span></h3><div class="progress-track"><span style="width:${total?known/total*100:0}%;background:#789b82"></span><span style="width:${total?learning/total*100:0}%;background:#e4cf89"></span></div><div class="progress-labels"><span><i></i>较熟悉 ${known}</span><span><i style="background:#e4cf89"></i>学习中 ${learning}</span><span><i style="background:#e2e7e8"></i>未学习 ${total-known-learning}</span></div><p class="info-note">${quizzes.length?`累计填空 / 变位 ${quizzes.length} 次，正确 ${correct} 次，正确率 ${Math.round(correct/quizzes.length*100)}%。`:'还没有测试记录，完成第一组练习后会在这里显示。'} 闪卡使用简易间隔复习，连续多次记住后标记为“较熟悉”；这不是正式等级评估。</p></section>`;
+    return pageTitle('RECORDAR Y PRACTICAR','让学过的，留下来。','从“好像认识”，到真正想得起来。')+`<div class="review-options">${application.reviewCard()}<article class="review-option card"><div class="option-icon">${icon('review')}</div><h2>词汇闪卡</h2><p>先回想，再翻面。按记忆情况安排下一次复习，保留词语的原句。</p>${btn('开始复习 '+icon('arrow'),'start-cards','',due?'primary':'')}<div class="tiny">${due} 个待学 / 到期 · 每组最多 10 张</div></article><article class="review-option card"><div class="option-icon">${icon('edit')}</div><h2>语境填空</h2><p>把词放回句子里，练习 A1 语法、性数一致与常用表达。</p>${btn('开始填空 '+icon('arrow'),'start-quiz')}<div class="tiny">${QUESTIONS.length} 道内置题 · 每组 6 题</div></article><article class="review-option card"><div class="option-icon">${icon('verbs')}</div><h2>变位小练习</h2><p>从现在时开始，练习常用动词在人称变化时的不同形式。</p>${btn('练习变位 '+icon('arrow'),'start-conj')}<div class="tiny">10 个常用动词 · 每组 6 题</div></article></div><section class="progress-card card"><h3>我的词汇状态 <span class="tiny muted">按闪卡自评记录</span></h3><div class="progress-track"><span style="width:${total?known/total*100:0}%;background:#789b82"></span><span style="width:${total?learning/total*100:0}%;background:#e4cf89"></span></div><div class="progress-labels"><span><i></i>较熟悉 ${known}</span><span><i style="background:#e4cf89"></i>学习中 ${learning}</span><span><i style="background:#e2e7e8"></i>未学习 ${total-known-learning}</span></div><p class="info-note">${quizzes.length?`累计填空 / 变位 ${quizzes.length} 次，正确 ${correct} 次，正确率 ${Math.round(correct/quizzes.length*100)}%。`:'还没有测试记录，完成第一组练习后会在这里显示。'} 闪卡使用简易间隔复习，连续多次记住后标记为“较熟悉”；这不是正式等级评估。</p></section>`;
   }
   const shuffled = a => {const result=[...a];for(let i=result.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[result[i],result[j]]=[result[j],result[i]];}return result;};
   function startSession(mode) {
@@ -168,9 +165,9 @@
     const a=state.articles.find(x=>x.id===id)||{};
     openModal(id?'编辑文章':'带进一篇喜欢的文章',`<p class="modal-description">粘贴西语正文，或导入 TXT / Markdown（按纯文本展示）。你可以自己指定难度，稍后随时修改。</p><form id="article-form" data-id="${id||''}"><label class="file-drop">导入本地文本<input type="file" id="article-file" accept=".txt,.md,text/plain,text/markdown"></label><div class="form-grid"><label class="field full">标题<input name="title" required maxlength="200" value="${esc(a.title)}" placeholder="文章的西语标题"></label><label class="field">难度<select name="level">${['A1','A2','B1','B2','C1','C2'].map(x=>`<option ${x===(a.level||'A1')?'selected':''}>${x}</option>`).join('')}</select></label><label class="field">主题<input name="category" required maxlength="40" value="${esc(a.category||'我的文章')}"></label><label class="field full">来源链接（可选）<input name="source" type="url" placeholder="https://…（只保存链接，不自动抓取正文）" value="${esc(a.source)}"></label><label class="field full">西语正文<textarea name="text" lang="es" required maxlength="100000" style="min-height:160px" placeholder="在这里粘贴正文…">${esc(a.text)}</textarea></label><label class="field full">中文译文（可选）<textarea name="translation" maxlength="100000">${esc(a.translation)}</textarea></label></div><div class="form-error" role="alert"></div><div class="form-actions">${btn('取消','close-modal')}<button class="btn primary" type="submit">保存文章</button></div></form>`);
   }
-  function noteForm(id) {
-    const n=state.notes.find(x=>x.id===id)||{};
-    openModal(id?'编辑语法笔记':'留下一条语法发现',`<form id="note-form" data-id="${id||''}"><div class="form-grid"><label class="field full">标题<input name="title" required maxlength="150" placeholder="如：tener 用来表达年龄" value="${esc(n.title)}"></label><label class="field full">分类<input name="category" required maxlength="40" value="${esc(n.category||'语法笔记')}" placeholder="语法笔记 / 动词变位 / 固定搭配"></label><label class="field full">内容与例句<textarea name="body" required maxlength="10000" style="min-height:180px" placeholder="规则、例句、容易混淆的地方，都可以写下来。">${esc(n.body)}</textarea></label></div><div class="form-error" role="alert"></div><div class="form-actions">${btn('取消','close-modal')}<button class="btn primary" type="submit">保存笔记</button></div></form>`);
+  function noteForm(id,draft) {
+    const n=state.notes.find(x=>x.id===id)||draft||{};
+    openModal(id?'编辑语法笔记':'留下一条语法发现',`<form id="note-form" data-id="${id||''}"><div class="form-grid"><label class="field full">标题<input name="title" required maxlength="150" placeholder="如：tener 用来表达年龄" value="${esc(n.title)}"></label><label class="field full">分类<input name="category" required maxlength="40" value="${esc(n.category||'语法笔记')}" placeholder="语法笔记 / 动词变位 / 固定搭配"></label><label class="field full">内容与例句<textarea name="body" required maxlength="10000" style="min-height:180px" placeholder="规则、例句、容易混淆的地方，都可以写下来。">${esc(n.body)}</textarea></label>${grammarBook.fields(n)}</div><div class="form-error" role="alert"></div><div class="form-actions">${btn('取消','close-modal')}<button class="btn primary" type="submit">保存笔记</button></div></form>`);
   }
   function importCSV() {
     pendingImport=null;
@@ -246,7 +243,7 @@
   document.addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();if($('#modal').open)$('#modal').close();go('search');}});
   document.addEventListener('keyup',e=>{if(e.target.closest('#reader-content'))captureSelection();if(e.target.closest('[data-collect-text]'))listening.captureSelection();});
   document.addEventListener('input',e=>{
-    listening.input(e.target);questions.input(e.target);curriculum.input(e.target);
+    listening.input(e.target);questions.input(e.target);curriculum.input(e.target);application.input(e.target);grammarBook.input(e.target);
     if(e.target.id==='global-search'){filters.globalQuery=e.target.value;$('#global-search-results').innerHTML=globalSearchResults();}
     if(e.target.id==='word-search'){filters.wordQuery=e.target.value;$('#word-results').innerHTML=wordResults();}
     if(e.target.id==='article-search'){filters.articleQuery=e.target.value;$('#article-results').innerHTML=articleResults();}
@@ -254,7 +251,7 @@
   document.addEventListener('change',async e=>{
     const t=e.target;
     await listening.change(t);
-    vocabulary.change(t);
+    vocabulary.change(t);grammarBook.change(t);
     if(t.id==='word-function'){filters.wordFunction=t.value;$('#word-results').innerHTML=wordResults();return;}
     if(t.id==='word-status'){filters.wordStatus=t.value;$('#word-results').innerHTML=wordResults();return;}
     if(!['csv-file','article-file','backup-file'].includes(t.id))return;
@@ -270,6 +267,7 @@
   document.addEventListener('submit',async e=>{
     const form=e.target;e.preventDefault();const data=Object.fromEntries(new FormData(form));
     try {
+      if(await application.submit(form))return;
       if(await vocabulary.submit(form))return;
       if(await curriculum.submit(form))return;
       if(await questions.submit(form))return;
@@ -294,8 +292,8 @@
       }
       if(form.id==='note-form') {
         if(!C.clean(data.title)||!C.clean(data.body))throw new Error('请填写笔记标题和内容。');
-        const old=state.notes.find(n=>n.id===form.dataset.id),n={...old,id:old?.id||uid(),title:C.clean(data.title,150),body:C.clean(data.body,10000),category:C.clean(data.category,40)};
-        if(old)Object.assign(old,n);else state.notes.unshift(n);persist('这条发现已经记下。');$('#modal').close();go('grammar');
+        const old=state.notes.find(n=>n.id===form.dataset.id),n={...old,id:old?.id||uid(),title:C.clean(data.title,150),body:C.clean(data.body,10000),category:C.clean(data.category,40),grammarIds:new FormData(form).getAll('grammarIds').filter(id=>GRAMMAR.some(g=>g.id===id))};
+        if(old)Object.assign(old,n);else state.notes.unshift(n);persist('这条发现已经记下。');$('#modal').close();go('grammar/'+n.id);
       }
       if(form.id==='settings-form'){speech.stop();state.settings={accent:data.accent,rate:Number(data.rate)};persist('朗读偏好已保存。');refreshSpeechConfig();}
       if(form.id==='quiz-form'&&session&&!session.answered){const q=session.items[session.index],answer=C.clean(data.answer,100);if(!answer)throw new Error('先试着填写一个答案。');const correct=C.norm(answer)===C.norm(q.answer);session.answer=answer;session.answered=true;session.lastCorrect=correct;if(correct)session.correct++;session.answers.push({q,input:answer,correct});state.events.push({type:'quiz',time:Date.now(),correct});persist();render();}
@@ -307,7 +305,9 @@
   const questions=ClaroQuestions.create({getState:()=>state,esc,btn,icon,go,toast,persist,openModal,pageTitle,empty,uid,grammar:GRAMMAR,cloud:CLOUD,currentSentence:()=>listening.currentSource()});
   const curriculum=ClaroCurriculum.create({getState:()=>state,esc,btn,icon,go,uid,persist,pageTitle,questions,cloud:CLOUD,render});
   const vocabulary=ClaroVocabulary.create({getState:()=>state,esc,btn,icon,uid,persist,openModal,pageTitle,empty,searchBox,searchNorm,filters,categories,wordStatus,statusLabel,functions:()=>curriculum.groups(),wordFunctions:w=>curriculum.functions(w),refreshListening:()=>listening.refresh(),render});
-  Object.assign(actions,listening.actions,questions.actions,curriculum.actions,vocabulary.actions);
+  const application=ClaroApplication.create({getState:()=>state,esc,btn,icon,uid,persist,openModal,pageTitle,empty,go,render,toast,grammar:GRAMMAR,expressions:STARTER_EXPRESSIONS,questions,cloud:CLOUD,currentSentence:()=>listening.currentSource()});
+  const grammarBook=ClaroGrammarBook.create({getState:()=>state,esc,btn,icon,pageTitle,empty,searchBox,grammar:GRAMMAR,noteForm});
+  Object.assign(actions,listening.actions,questions.actions,curriculum.actions,vocabulary.actions,application.actions,grammarBook.actions);
   window.addEventListener('hashchange',()=>{speech.stop();render();window.scrollTo(0,0);$('#main').focus({preventScroll:true});});
   window.addEventListener('pagehide',()=>{speech.stop();listening.cleanup();});
   render();
