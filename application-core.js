@@ -33,7 +33,7 @@
     if(human)rows[2]=['认识新同事',`补上“${w.meaning}”前的定冠词。`,'___ '+lemma+' está aquí.',a];
     // Feminine stressed-a nouns keep their gender, with el/un in singular adjacency.
     if(['agua'].includes(lemma)){rows[2]=['找饮用水','补上 agua 前的单数定冠词。','¿Dónde está ___ agua?','el'];}
-    return rows.filter(r=>r[3]).map((r,i)=>{const q=make(i,...r,i===1&&r[3]===plural?'数量变了，名词也要检查单复数。':`词典原形是 ${lemma}；这里按提示回想词义和搭配。`,i===1&&r[3]===plural?`${lemma} 的复数是 ${plural}。`:`这句话使用 ${r[3]}。注意原句里的冠词或数量提示。`);if(m.gender==='common'&&i===2)q.answers=['el','la'];return q;});
+    return rows.filter(r=>r[3]).map((r,i)=>{const q=make(i,...r,i===1&&r[3]===plural?'数量变了，名词也要检查单复数。':`词典原形是 ${lemma}；这里按提示回想词义和搭配。`,i===1&&r[3]===plural?`${lemma} 的复数是 ${plural}。`:`这句话使用 ${r[3]}。注意原句里的冠词或数量提示。`);if(m.gender==='common'&&i===2)q.answers=['el','la'];if(lemma==='agua'&&i===2)q.why='agua 是阴性；单数紧邻重读 a 开头时通常用 el，语法性别并没有改变。';return q;});
   }
   function expressionPool(t){const k=norm(t.word.word).replace(/…/gu,'').trim(),rows=Object.entries(D.expressions).find(([key])=>norm(key)===k)?.[1];if(rows)return rows.map((r,i)=>exercise({scene:r[0],prompt:r[1],sentence:r[2],answers:[r[3]],hint:`意思是“${t.word.meaning}”。先回想完整词块。`,why:`这里可以说：${r[2].replace('___',r[3])}`,grammarIds:['g17']},t,'expression_'+hash(k)+'_'+i));
     const extra={
