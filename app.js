@@ -23,15 +23,17 @@
   const go = page => { if (location.hash.slice(1) === page) render(); else location.hash = page; };
   const todayKey = (time = Date.now()) => new Date(time).toLocaleDateString('sv-SE');
   let storageIssue = '', toastTimer, pendingImport, selected = null, session = null;
-  let filters = { wordQuery:'', category:'全部词汇', wordStatus:'all', articleQuery:'', articleLevel:'all', verb:'hablar' };
+  let filters = { wordQuery:'', category:'全部词汇', wordStatus:'all', articleQuery:'', articleLevel:'all', verb:'hablar', globalQuery:'', globalKind:'all' };
   let state;
   try {
     const saved = localStorage.getItem(KEY);
-    state = saved ? C.validateState(JSON.parse(saved)) : freshState();
+    const previous = saved ? JSON.parse(saved) : null;
+    state = previous ? C.validateState(previous) : freshState();
+    if(previous && !Object.hasOwn(previous,'lessons')) state.lessons=structuredClone(SEED_LESSONS);
   } catch {
     state = freshState(); storageIssue = '本地数据未能读取。当前使用初始内容；可在设置中导入此前导出的备份。';
   }
-  function freshState() { return { version:1, words:structuredClone(SEED_WORDS), articles:structuredClone(SEED_ARTICLES), notes:[], reviews:{}, reading:{}, events:[], settings:{accent:'es-ES',rate:0.85} }; }
+  function freshState() { return { version:1, words:structuredClone(SEED_WORDS), articles:structuredClone(SEED_ARTICLES), notes:[], reviews:{}, reading:{}, events:[], lessons:structuredClone(SEED_LESSONS), listening:{}, settings:{accent:'es-ES',rate:0.85} }; }
   function persist(message) {
     try { localStorage.setItem(KEY,JSON.stringify(state)); storageIssue=''; if(message) toast(message); return true; }
     catch { storageIssue='浏览器未能保存数据（可能空间已满或禁用存储）。请立即在设置中导出备份；当前修改暂存于本次页面。'; toast(storageIssue); return false; }
@@ -46,18 +48,30 @@
   function searchBox(id,placeholder,value) { return `<label class="search-box">${icon('search')}<input id="${id}" type="search" aria-label="${placeholder}" placeholder="${placeholder}" value="${esc(value)}"></label>`; }
   function empty(title,desc,action='') { return `<div class="empty"><h3>${title}</h3><p>${desc}</p>${action}</div>`; }
   function render() {
+    listening.cleanup();
     const route = location.hash.slice(1) || 'home', base = route.split('/')[0];
     if (base !== 'reader') selected=null;
     if (base !== 'practice') session=null;
     if (base === 'practice' && !session) { go('review'); return; }
-    const navs = [['home','学习概览'],['words','我的词库'],['reading','阅读空间'],['grammar','语法手帐'],['verbs','动词变位'],['review','复习与测试']];
-    $('#nav').innerHTML=navs.map(([p,t])=>`<a href="#${p}" class="nav-item ${(base===p||(p==='reading'&&base==='reader')||(p==='review'&&base==='practice'))?'active':''}" ${base===p?'aria-current="page"':''}>${icon(p)}${t}${p==='review'&&dueWords().length?`<span class="badge">${dueWords().length}</span>`:''}</a>`).join('');
-    $('#page-label').textContent = Object.fromEntries(navs)[base] || ({settings:'设置与数据',reader:'阅读空间',practice:'复习与测试'})[base] || '学习概览';
-    const renderers = {home:renderHome,words:renderWords,reading:renderReading,reader:()=>renderReader(route.split('/')[1]),grammar:renderGrammar,verbs:renderVerbs,review:renderReview,practice:renderSession,settings:renderSettings};
+    const navs = [['home','学习概览'],['words','我的词库'],['reading','阅读空间'],['listening','听说工作室'],['grammar','语法手帐'],['verbs','动词变位'],['review','复习与测试']];
+    $('#nav').innerHTML=navs.map(([p,t])=>`<a href="#${p}" class="nav-item ${(base===p||(p==='reading'&&base==='reader')||(p==='listening'&&base==='listen')||(p==='review'&&base==='practice'))?'active':''}" ${base===p?'aria-current="page"':''}>${icon(p==='listening'?'sound':p)}${t}${p==='review'&&dueWords().length?`<span class="badge">${dueWords().length}</span>`:''}</a>`).join('');
+    $('#page-label').textContent = Object.fromEntries(navs)[base] || ({settings:'设置与数据',reader:'阅读空间',practice:'复习与测试',listen:'听说工作室',search:'全站搜索'})[base] || '学习概览';
+    const renderers = {home:renderHome,words:renderWords,reading:renderReading,reader:()=>renderReader(route.split('/')[1]),grammar:renderGrammar,verbs:renderVerbs,review:renderReview,practice:renderSession,settings:renderSettings,search:renderSearch,listening:listening.library,listen:()=>listening.workspace(route.split('/')[1],route.split('/')[2])};
     $('#main').innerHTML = (storageIssue?`<div class="notice" role="alert">${esc(storageIssue)}</div>`:'') + (renderers[base]||renderHome)();
     document.querySelectorAll('[data-icon]').forEach(el=>el.innerHTML=icon(el.dataset.icon));
     document.title=`${$('#page-label').textContent} · Claro`;
     refreshSpeechConfig();
+    if(base==='listen')listening.mount();
+    const focusId=base==='grammar'?route.split('/')[1]:'';
+    if(focusId)requestAnimationFrame(()=>{const el=document.getElementById('entry-'+focusId);if(el){if(el.tagName==='DETAILS')el.open=true;el.classList.add('linked-entry');el.scrollIntoView({block:'start',behavior:'instant'});el.tabIndex=-1;el.focus({preventScroll:true});}});
+    if(base==='search')requestAnimationFrame(()=>$('#global-search')?.focus());
+  }
+  const searchKinds={words:'词汇',reading:'文章',grammar:'语法知识',notes:'我的笔记',verbs:'动词变位',listening:'视频 / 音频字幕'};
+  function renderSearch(){return pageTitle('BUSCAR EN MI ESPACIO','搜索我的学习内容','用中文、西语、变位词形或原句，找回已经收录的内容。')+`<div class="global-search-panel card">${searchBox('global-search','搜索单词、语法、文章或字幕…',filters.globalQuery)}<p>例如：café、soy、年龄、近未来。按 ⌘ K / Ctrl K 随时打开。</p><div class="tabs search-kind-tabs" role="group" aria-label="搜索内容类型">${[['all','全部'],...Object.entries(searchKinds)].map(([key,label])=>`<button class="tab ${filters.globalKind===key?'active':''}" data-action="search-kind" data-value="${key}" aria-pressed="${filters.globalKind===key}">${label}</button>`).join('')}</div></div><div id="global-search-results" aria-live="polite">${globalSearchResults()}</div>`;}
+  function globalSearchResults(){
+    if(!filters.globalQuery.trim())return `<div class="search-suggestions">${['café','ser estar','年龄','me gusta','ir a'].map(q=>btn(esc(q),'search-suggestion',`data-value="${esc(q)}"`,'small')).join('')}</div>`+empty('把想找的内容写在上面','搜索范围包括你的词库、阅读、语法手帐、动词表和已导入字幕。');
+    const all=ClaroStudy.search(filters.globalQuery,{words:state.words,articles:state.articles,notes:state.notes,grammar:GRAMMAR,verbs:VERBS,lessons:state.lessons}),rows=all.filter(r=>filters.globalKind==='all'||r.kind===filters.globalKind);
+    return `<p class="search-count">找到 ${rows.length} 条内容${rows.length>80?' · 先显示前 80 条，请增加关键词缩小范围':''}</p>`+(rows.length?`<div class="search-results">${rows.slice(0,80).map(r=>{const at=ClaroStudy.fold(r.body).indexOf(ClaroStudy.fold(filters.globalQuery).split(' ')[0]),start=Math.max(0,at-35),snippet=(start?'…':'')+r.body.slice(start,start+175)+(r.body.length>start+175?'…':'');return `<button class="search-result card" data-action="search-open" data-kind="${r.kind}" data-id="${r.id}" data-cue="${r.cueId||''}"><span class="tag">${searchKinds[r.kind]}</span><strong>${esc(r.title)}</strong><p>${esc(snippet)}</p><span class="search-result-arrow">${icon('arrow')}</span></button>`;}).join('')}</div>`:empty('没有找到相关内容','试试原形、中文释义或更短的关键词。这里只搜索站内已收录内容。'));
   }
   function renderHome() {
     const n = state.events.filter(e=>todayKey(e.time)===todayKey()).length;
@@ -72,7 +86,7 @@
     <div class="daily-plan card"><div class="plan-row"><div class="plan-icon">${icon('review')}</div><div><h3>${due?'复习 10 个词，唤醒记忆':'今日词汇已复习，做得很好'}</h3><p>${due?`${due} 个待学 / 到期词汇 · 一次最多 10 张卡片`:'也可以去词库继续收集新词'}</p></div><button class="text-btn" data-action="start-cards">去复习 ${icon('arrow')}</button></div><div class="plan-row"><div class="plan-icon">${icon('reading')}</div><div><h3>读一篇短文，遇见新词</h3><p>${esc(read?.title||'添加一篇喜欢的文章')} · A1 入门阅读</p></div><button class="text-btn" data-action="read" data-id="${read?.id||''}">去阅读 ${icon('arrow')}</button></div><div class="plan-row"><div class="plan-icon">${icon('grammar')}</div><div><h3>弄懂一个小语法</h3><p>从 el 和 la 开始，认识名词的阴阳性</p></div><a class="text-btn" href="#grammar">去看看 ${icon('arrow')}</a></div></div></div>
     <aside class="home-right"><section class="daily-word card"><div class="eyebrow">UNA PALABRA · 今日一词</div><div class="word-title"><h2>aprender</h2><button class="icon-btn" aria-label="朗读 aprender" data-action="speak" data-text="aprender">${icon('sound')}</button></div><div class="definition">v. 学习，学会 <span class="tag level">A1</span></div><blockquote>“Aprendo una palabra<br>nueva cada día.”</blockquote><span class="tiny muted">我每天学一个新单词。</span><button class="text-btn" data-action="word-detail" data-id="w53">看看这个单词 ${icon('arrow')}</button></section>
     <section class="week-card card"><h3>把小进步，留在这一周</h3><div class="week-bars">${weekBars()}</div><p>每一次阅读与练习，都会留下记录。</p></section></aside></div>
-    <div class="section-heading"><h2>为你的第一步准备 <span>A1 · 短篇阅读</span></h2><a class="text-btn" href="#reading">全部文章 ${icon('arrow')}</a></div><div class="article-grid">${state.articles.filter(a=>a.level==='A1').slice(0,3).map(articleCard).join('')}</div>`;
+    <a class="listening-home-link" href="#listening">${icon('sound')}<div><strong>听一小段，说一句西语</strong><span>打开听说工作室 · 精听、跟读、听写与语法讲解</span></div>${icon('arrow')}</a><div class="section-heading"><h2>为你的第一步准备 <span>A1 · 短篇阅读</span></h2><a class="text-btn" href="#reading">全部文章 ${icon('arrow')}</a></div><div class="article-grid">${state.articles.filter(a=>a.level==='A1').slice(0,3).map(articleCard).join('')}</div>`;
   }
   function weekBars() {
     const days=Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()-6+i);return {d,n:state.events.filter(e=>todayKey(e.time)===todayKey(d.getTime())).length};});
@@ -118,7 +132,7 @@
   }
   function renderGrammar() {
     return pageTitle('MI CUADERNO','语法手帐','把规则放进例句里，把疑问留在笔记里。',btn(`${icon('plus')} 添加笔记`,'add-note','','primary'))+
-    `<div class="grammar-layout"><section class="grammar-list">${GRAMMAR.map((g,i)=>`<details class="grammar-item card" ${i===0?'open':''}><summary><span class="grammar-mark">${['el','es','yo','hay','me','-a'][i]}</span><div><h3>${g.title}</h3><p>${g.summary}</p></div>${icon('chevron')}</summary><div class="grammar-body">${esc(g.body)}</div><div>${g.examples.map(([es,zh])=>`<div class="example-row"><div class="example-copy"><strong lang="es">${esc(es)}</strong><small>${esc(zh)}</small></div><button class="icon-btn" aria-label="朗读 ${esc(es)}" data-action="speak" data-text="${esc(es)}">${icon('sound')}</button></div>`).join('')}</div></details>`).join('')}</section><aside class="notes-side"><div class="section-heading"><h2>我的笔记 <span>${state.notes.length} 条</span></h2></div>${state.notes.length?state.notes.map(n=>`<article class="note-card card"><span class="tag">${esc(n.category)}</span><h3>${esc(n.title)}</h3><p>${esc(n.body)}</p><div class="note-tools"><button class="text-btn" data-action="edit-note" data-id="${n.id}">${icon('edit')} 编辑</button></div></article>`).join(''):`<div class="card">${empty('留一个小发现','比如：为什么 agua 前面用 el？',btn('写下第一条笔记','add-note'))}</div>`}</aside></div>`;
+    `<div class="grammar-layout"><section class="grammar-list">${GRAMMAR.map((g,i)=>`<details id="entry-${g.id}" class="grammar-item card" ${i===0?'open':''}><summary><span class="grammar-mark">${['el','es','yo','hay','me','-a','me','ir','tú'][i]||'es'}</span><div><h3>${g.title}</h3><p>${g.summary}</p></div>${icon('chevron')}</summary><div class="grammar-body">${esc(g.body)}</div><div>${g.examples.map(([es,zh])=>`<div class="example-row"><div class="example-copy"><strong lang="es">${esc(es)}</strong><small>${esc(zh)}</small></div><button class="icon-btn" aria-label="朗读 ${esc(es)}" data-action="speak" data-text="${esc(es)}">${icon('sound')}</button></div>`).join('')}</div></details>`).join('')}</section><aside class="notes-side"><div class="section-heading"><h2>我的笔记 <span>${state.notes.length} 条</span></h2></div>${state.notes.length?state.notes.map(n=>`<article id="entry-${n.id}" class="note-card card"><span class="tag">${esc(n.category)}</span><h3>${esc(n.title)}</h3><p>${esc(n.body)}</p>${n.grammarIds?.length?`<div class="note-grammar-links">${n.grammarIds.map(id=>{const g=GRAMMAR.find(g=>g.id===id);return g?`<a class="tag" href="#grammar/${g.id}">${esc(g.title)}</a>`:'';}).join('')}</div>`:''}<div class="note-tools">${n.lessonId&&state.lessons.some(l=>l.id===n.lessonId)?`<a class="text-btn" href="#listen/${n.lessonId}/${n.cueId}">${icon('sound')} 返回原句</a>`:''}<button class="text-btn" data-action="edit-note" data-id="${n.id}">${icon('edit')} 编辑</button></div></article>`).join(''):`<div class="card">${empty('留一个小发现','比如：为什么 agua 前面用 el？',btn('写下第一条笔记','add-note'))}</div>`}</aside></div>`;
   }
   function renderVerbs() {
     const v=VERBS[filters.verb];
@@ -151,7 +165,7 @@
   }
   const nextInterval=(w,grade)=>C.schedule(state.reviews[w.id],grade).interval+' 天后';
   function renderSettings() {
-    return pageTitle('A TU MANERA','设置与数据','让学习适合你，也让积累有一份备份。')+`<div class="settings-grid"><section class="settings-card card"><h2>听你习惯的西语</h2><p>${CLOUD?'内置内容使用随网站提供的 Mónica 西班牙西语（es-ES）音频。新加内容、其他口音使用此设备已安装的相应西语声音。':'默认使用西班牙西语（es-ES）。本机优先采用 Mónica 西语音色生成音频，所有朗读都明确指定西语声音。'}</p><div id="speech-config-status" class="speech-config-status" role="status">正在检测西语声音…</div><form id="settings-form"><div class="form-grid"><label class="field">发音偏好<select name="accent"><option value="es-ES" ${state.settings.accent==='es-ES'?'selected':''}>西班牙 · es-ES</option><option value="es-MX" ${state.settings.accent==='es-MX'?'selected':''}>墨西哥 · es-MX</option></select></label><label class="field">朗读速度<select name="rate">${[[0.7,'慢速 · 0.7×'],[0.85,'适中 · 0.85×'],[1,'正常 · 1×']].map(([v,t])=>`<option value="${v}" ${v===state.settings.rate?'selected':''}>${t}</option>`).join('')}</select></label></div><div class="form-actions"><button class="btn primary" type="submit">保存偏好</button>${btn(icon('sound')+' 试听','speak','data-text="Hola. Aprendo español poco a poco."')}${btn('重新检测声音','retry-speech')}</div></form></section><section class="settings-card card"><h2>把积累好好保存</h2><p>词库、文章、笔记和复习记录保存在当前设备的浏览器中。手机与电脑暂不自动同步，可导出 JSON 备份后在另一设备恢复。清除网站数据前请先备份。</p>${btn(icon('download')+' 导出完整备份','export-backup')}${btn(icon('upload')+' 恢复备份','restore-backup')}<p class="info-note">当前：${state.words.length} 个词 · ${state.articles.length} 篇文章 · ${state.notes.length} 条笔记。恢复前可预览条目数，恢复会替换当前全部数据。</p></section><section class="settings-card card"><h2>把喜欢的内容带进来</h2><p>词汇支持 CSV；文章支持粘贴正文或导入 TXT / Markdown。网页链接可以保存为来源，当前版本不自动抓取网页、识别图片或解析 PDF。</p>${btn('导入 CSV 词汇','import-csv')}${btn('添加文章','add-article')}${btn('下载词汇 CSV 示例','sample-csv')}<p class="info-note">新词支持手动释义；当前版本没有接入在线词典或 AI 翻译。</p></section><section class="settings-card card"><h2>设计灵感与学习资源</h2><p>这个个人版本借鉴内容驱动的学习流程，独立编写。示例短文为原创，内置知识点可结合权威教材核对学习。</p><div class="reference-list"><a href="https://github.com/ZuodaoTech/everyone-can-use-english" target="_blank" rel="noopener noreferrer">Enjoy / 人人都能用英语<span>项目与学习理念 ↗</span></a><a href="https://readlang.com/" target="_blank" rel="noopener noreferrer">Readlang<span>阅读取词与闪卡 ↗</span></a><a href="https://www.lingq.com/en/learn-spanish-online/" target="_blank" rel="noopener noreferrer">LingQ<span>内容导入与语境学习 ↗</span></a><a href="https://spanish.kwiziq.com/" target="_blank" rel="noopener noreferrer">Kwiziq Spanish<span>语法与薄弱项练习 ↗</span></a><a href="https://www.spanishdict.com/guide/spanish-present-tense-forms" target="_blank" rel="noopener noreferrer">SpanishDictionary.com<span>现在时变位参考 ↗</span></a></div></section></div>`;
+    return pageTitle('A TU MANERA','设置与数据','让学习适合你，也让积累有一份备份。')+`<div class="settings-grid"><section class="settings-card card"><h2>听你习惯的西语</h2><p>${CLOUD?'内置内容使用随网站提供的 Mónica 西班牙西语（es-ES）音频。新加内容、其他口音使用此设备已安装的相应西语声音。':'默认使用西班牙西语（es-ES）。本机优先采用 Mónica 西语音色生成音频，所有朗读都明确指定西语声音。'}</p><div id="speech-config-status" class="speech-config-status" role="status">正在检测西语声音…</div><form id="settings-form"><div class="form-grid"><label class="field">发音偏好<select name="accent"><option value="es-ES" ${state.settings.accent==='es-ES'?'selected':''}>西班牙 · es-ES</option><option value="es-MX" ${state.settings.accent==='es-MX'?'selected':''}>墨西哥 · es-MX</option></select></label><label class="field">朗读速度<select name="rate">${[[0.7,'慢速 · 0.7×'],[0.85,'适中 · 0.85×'],[1,'正常 · 1×']].map(([v,t])=>`<option value="${v}" ${v===state.settings.rate?'selected':''}>${t}</option>`).join('')}</select></label></div><div class="form-actions"><button class="btn primary" type="submit">保存偏好</button>${btn(icon('sound')+' 试听','speak','data-text="Hola. Aprendo español poco a poco."')}${btn('重新检测声音','retry-speech')}</div></form></section><section class="settings-card card"><h2>把积累好好保存</h2><p>词库、文章、笔记和复习记录保存在当前设备的浏览器中。手机与电脑暂不自动同步，可导出 JSON 备份后在另一设备恢复。音频单独保存在本机，JSON 不包含音频文件；清除网站数据前请先备份。</p>${btn(icon('download')+' 导出完整备份','export-backup')}${btn(icon('upload')+' 恢复备份','restore-backup')}<p class="info-note">当前：${state.words.length} 个词 · ${state.articles.length} 篇文章 · ${state.notes.length} 条笔记 · ${state.lessons.length} 份听说素材。恢复前可预览条目数，恢复会替换当前全部数据。</p></section><section class="settings-card card"><h2>把喜欢的内容带进来</h2><p>词汇支持 CSV；文章支持粘贴正文或导入 TXT / Markdown。网页链接可以保存为来源，当前版本不自动抓取网页、识别图片或解析 PDF。</p>${btn('导入 CSV 词汇','import-csv')}${btn('添加文章','add-article')}${btn('导入视频 / 音频','import-lesson')}${btn('下载词汇 CSV 示例','sample-csv')}<p class="info-note">新词支持手动释义。听说工作室支持逐句翻译与讲解编辑；自动讲解需在本机配置服务。</p></section><section class="settings-card card"><h2>设计灵感与学习资源</h2><p>这个个人版本借鉴内容驱动的学习流程，独立编写。示例短文为原创，内置知识点可结合权威教材核对学习。</p><div class="reference-list"><a href="https://github.com/ZuodaoTech/everyone-can-use-english" target="_blank" rel="noopener noreferrer">Enjoy / 人人都能用英语<span>项目与学习理念 ↗</span></a><a href="https://readlang.com/" target="_blank" rel="noopener noreferrer">Readlang<span>阅读取词与闪卡 ↗</span></a><a href="https://www.lingq.com/en/learn-spanish-online/" target="_blank" rel="noopener noreferrer">LingQ<span>内容导入与语境学习 ↗</span></a><a href="https://spanish.kwiziq.com/" target="_blank" rel="noopener noreferrer">Kwiziq Spanish<span>语法与薄弱项练习 ↗</span></a><a href="https://www.spanishdict.com/guide/spanish-present-tense-forms" target="_blank" rel="noopener noreferrer">SpanishDictionary.com<span>现在时变位参考 ↗</span></a></div></section></div>`;
   }
   function openModal(title,body) { $('#modal').innerHTML=`<div class="modal-header"><h2 id="modal-title">${title}</h2><button class="icon-btn" data-action="close-modal" aria-label="关闭">${icon('close')}</button></div>${body}`; if(!$('#modal').open)$('#modal').showModal(); }
   function wordForm(id) {
@@ -210,6 +224,9 @@
     const el=sel.anchorNode?.parentElement;chooseText(sel.toString(),el?.closest('p')?.textContent||sel.toString());
   }
   const actions = {
+    'search-kind':b=>{filters.globalKind=b.dataset.value;render();},
+    'search-suggestion':b=>{filters.globalQuery=b.dataset.value;render();},
+    'search-open':b=>{const {kind,id,cue}=b.dataset;if(kind==='words')wordDetail(id);if(kind==='reading')go('reader/'+id);if(kind==='grammar'||kind==='notes')go('grammar/'+id);if(kind==='verbs'){filters.verb=id;go('verbs');}if(kind==='listening')go('listen/'+id+'/'+cue);},
     route:b=>go(b.dataset.page),read:b=>go('reader/'+b.dataset.id),
     speak:b=>speak(b.dataset.text), 'speak-article':b=>{const a=state.articles.find(x=>x.id===b.dataset.id);if(a)speak(a.text);}, 'stop-speech':()=>speech.stop(),
     'retry-speech':()=>speech.refresh().then(()=>{refreshSpeechConfig();toast('西语声音已重新检测。');}),
@@ -237,13 +254,17 @@
   });
   document.addEventListener('pointerup',e=>{if(e.target.closest('#reader-content'))captureSelection();});
   document.addEventListener('keydown',e=>{const token=e.target.closest('[data-token]');if(token&&(e.key==='Enter'||e.key===' ')){e.preventDefault();chooseText(token.dataset.token,token.closest('p').textContent);}});
+  document.addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();if($('#modal').open)$('#modal').close();go('search');}});
   document.addEventListener('keyup',e=>{if(e.target.closest('#reader-content'))captureSelection();});
   document.addEventListener('input',e=>{
+    listening.input(e.target);
+    if(e.target.id==='global-search'){filters.globalQuery=e.target.value;$('#global-search-results').innerHTML=globalSearchResults();}
     if(e.target.id==='word-search'){filters.wordQuery=e.target.value;$('#word-results').innerHTML=wordResults();}
     if(e.target.id==='article-search'){filters.articleQuery=e.target.value;$('#article-results').innerHTML=articleResults();}
   });
   document.addEventListener('change',async e=>{
     const t=e.target;
+    await listening.change(t);
     if(t.id==='word-status'){filters.wordStatus=t.value;$('#word-results').innerHTML=wordResults();return;}
     if(!['csv-file','article-file','backup-file'].includes(t.id))return;
     const file=t.files[0];if(!file)return;
@@ -255,9 +276,10 @@
       if(t.id==='backup-file') {pendingImport=C.validateState(JSON.parse(content));$('#import-preview').innerHTML=`<div class="restore-summary">备份包含：${pendingImport.words.length} 个词、${pendingImport.articles.length} 篇文章、${pendingImport.notes.length} 条笔记、${pendingImport.events.length} 次学习记录。<br>恢复将替换当前数据；系统会先下载当前数据的备份。</div>`;$('[data-action="confirm-restore"]').disabled=false;$('#import-error').textContent='';}
     }catch(err){pendingImport=null;const form=$('#article-form');const error=$('#import-error')||form?.querySelector('.form-error');if(error)error.textContent=err instanceof SyntaxError?'文件不是有效的 JSON，请选择 Claro 导出的完整备份。':err.message;const confirm=$('[data-action="confirm-csv"]')||$('[data-action="confirm-restore"]');if(confirm)confirm.disabled=true;}
   });
-  document.addEventListener('submit',e=>{
+  document.addEventListener('submit',async e=>{
     const form=e.target;e.preventDefault();const data=Object.fromEntries(new FormData(form));
     try {
+      if(await listening.submit(form))return;
       if(form.id==='word-form'||form.id==='selection-form') {
         const id=form.dataset.id, word=C.clean(data.word,100), meaning=C.clean(data.meaning,300);
         if(!word||!meaning)throw new Error('请填写单词与中文释义。');
@@ -278,7 +300,7 @@
       }
       if(form.id==='note-form') {
         if(!C.clean(data.title)||!C.clean(data.body))throw new Error('请填写笔记标题和内容。');
-        const old=state.notes.find(n=>n.id===form.dataset.id),n={id:old?.id||uid(),title:C.clean(data.title,150),body:C.clean(data.body,10000),category:C.clean(data.category,40)};
+        const old=state.notes.find(n=>n.id===form.dataset.id),n={...old,id:old?.id||uid(),title:C.clean(data.title,150),body:C.clean(data.body,10000),category:C.clean(data.category,40)};
         if(old)Object.assign(old,n);else state.notes.unshift(n);persist('这条发现已经记下。');$('#modal').close();go('grammar');
       }
       if(form.id==='settings-form'){speech.stop();state.settings={accent:data.accent,rate:Number(data.rate)};persist('朗读偏好已保存。');refreshSpeechConfig();}
@@ -287,8 +309,10 @@
   });
   $('#modal').addEventListener('click',e=>{if(e.target===$('#modal')){const r=$('#modal').getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)$('#modal').close();}});
   const speech=ClaroSpeech.create({audio:$('#speech-audio'),settings:()=>state.settings,notify:toast,onStatus:updateSpeechPlayer,onVoices:refreshSpeechConfig});
+  const listening=ClaroListening.create({getState:()=>state,esc,btn,icon,go,toast,persist,openModal,pageTitle,empty,uid,download,grammar:GRAMMAR,cloud:CLOUD,stopSpeech:()=>speech.stop(),render});
+  Object.assign(actions,listening.actions);
   window.addEventListener('hashchange',()=>{speech.stop();render();window.scrollTo(0,0);$('#main').focus({preventScroll:true});});
-  window.addEventListener('pagehide',()=>speech.stop());
+  window.addEventListener('pagehide',()=>{speech.stop();listening.cleanup();});
   render();
   speech.init();
 })();

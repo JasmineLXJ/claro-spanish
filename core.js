@@ -65,13 +65,16 @@
       const id = identity(x); if (!clean(x.title) || !clean(x.text)) throw new Error('文章缺少标题或正文。');
       return { id, title: clean(x.title, 200), subtitle: clean(x.subtitle, 200), text: clean(x.text, 100000), translation: clean(x.translation, 100000), level: /^[ABC][12]$/.test(x.level) ? x.level : 'A1', category: clean(x.category, 40) || '我的文章', source: safeURL(x.source), cover: ['cafe','city','home','market','travel','book'].includes(x.cover) ? x.cover : 'book', original: !!x.original };
     });
-    const notes = s.notes.map(x => ({ id: identity(x), title: clean(x.title, 150), body: clean(x.body, 10000), category: clean(x.category, 40) || '语法笔记' }));
+    const notes = s.notes.map(x => ({ id: identity(x), title: clean(x.title, 150), body: clean(x.body, 10000), category: clean(x.category, 40) || '语法笔记', lessonId: clean(x.lessonId,100), cueId: clean(x.cueId,100), grammarIds: Array.isArray(x.grammarIds)?x.grammarIds.filter(g=>/^g\d+$/.test(g)).slice(0,30):[] }));
+    const study = typeof module !== 'undefined' && module.exports ? require('./study-core.js') : root.ClaroStudy;
+    const lessons = study.validateLessons(s.lessons || []);
+    const listening = study.validateProgress(s.listening || {}, lessons);
     const reviews = Object.fromEntries(words.filter(x => s.reviews?.[x.id] && Number.isFinite(s.reviews[x.id].due)).map(x => {
       const r = s.reviews[x.id]; return [x.id, { stage: Math.max(0,Math.min(6,Number(r.stage)||0)), due: Math.max(0,r.due), interval: Math.max(0,Number(r.interval)||0), last: Math.max(0,Number(r.last)||0) }];
     }));
     const reading = Object.fromEntries(articles.filter(x => s.reading?.[x.id]).map(x => [x.id, true]));
-    const events = s.events.filter(e => e && Number.isFinite(e.time) && ['review','quiz','read'].includes(e.type)).map(e => ({time:e.time,type:e.type,correct:!!e.correct}));
-    return { version:1, words, articles, notes, reviews, reading, events, settings: { accent: s.settings?.accent === 'es-MX' ? 'es-MX' : 'es-ES', rate: [0.7,0.85,1].includes(Number(s.settings?.rate)) ? Number(s.settings.rate) : 0.85 } };
+    const events = s.events.filter(e => e && Number.isFinite(e.time) && ['review','quiz','read','listen'].includes(e.type)).map(e => ({time:e.time,type:e.type,correct:!!e.correct}));
+    return { version:1, words, articles, notes, reviews, reading, events, lessons, listening, settings: { accent: s.settings?.accent === 'es-MX' ? 'es-MX' : 'es-ES', rate: [0.7,0.85,1].includes(Number(s.settings?.rate)) ? Number(s.settings.rate) : 0.85 } };
   }
   const api = { norm, clean, csvParse, csvWords, schedule, safeURL, validateState };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
