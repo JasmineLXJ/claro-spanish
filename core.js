@@ -59,7 +59,7 @@
     };
     const words = s.words.map(x => {
       const id = identity(x); if (!clean(x.word, 100) || !clean(x.meaning, 300)) throw new Error('词汇缺少单词或释义。');
-      return { id, word: clean(x.word, 100), meaning: clean(x.meaning, 300), category: clean(x.category, 40) || '我的生词', level: /^[ABC][12]$/.test(x.level) ? x.level : 'A1', pos: clean(x.pos, 40), example: clean(x.example, 2000), translation: clean(x.translation, 2000), source: clean(x.source, 200), starred: !!x.starred };
+      return { id, word: clean(x.word, 100), meaning: clean(x.meaning, 300), category: clean(x.category, 40) || '我的生词', functions: Array.isArray(x.functions)?[...new Set(x.functions.map(v=>clean(v,40)).filter(Boolean))].slice(0,10):[], unitId: clean(x.unitId,100), level: /^[ABC][12]$/.test(x.level) ? x.level : 'A1', pos: clean(x.pos, 40), example: clean(x.example, 2000), translation: clean(x.translation, 2000), source: clean(x.source, 200), starred: !!x.starred };
     });
     const articles = s.articles.map(x => {
       const id = identity(x); if (!clean(x.title) || !clean(x.text)) throw new Error('文章缺少标题或正文。');
@@ -69,12 +69,17 @@
     const study = typeof module !== 'undefined' && module.exports ? require('./study-core.js') : root.ClaroStudy;
     const lessons = study.validateLessons(s.lessons || []);
     const listening = study.validateProgress(s.listening || {}, lessons);
+    const questionCore = typeof module !== 'undefined' && module.exports ? require('./questions-core.js') : root.ClaroQuestionsCore;
+    const questions = questionCore.validate(s.questions || []);
+    const courseProgress = {};
+    const cp = s.courseProgress?.u01_l01;
+    if(cp && typeof cp === 'object') courseProgress.u01_l01 = {last:Number.isFinite(cp.last)?cp.last:0,answers:Object.fromEntries(Object.entries(cp.answers||{}).filter(([id,a])=>/^p0[1-5]$/.test(id)&&a&&typeof a==='object').map(([id,a])=>[id,{answer:clean(a.answer,300),correct:!!a.correct,usedHint:!!a.usedHint,time:Number.isFinite(a.time)?a.time:0}]))};
     const reviews = Object.fromEntries(words.filter(x => s.reviews?.[x.id] && Number.isFinite(s.reviews[x.id].due)).map(x => {
       const r = s.reviews[x.id]; return [x.id, { stage: Math.max(0,Math.min(6,Number(r.stage)||0)), due: Math.max(0,r.due), interval: Math.max(0,Number(r.interval)||0), last: Math.max(0,Number(r.last)||0) }];
     }));
     const reading = Object.fromEntries(articles.filter(x => s.reading?.[x.id]).map(x => [x.id, true]));
-    const events = s.events.filter(e => e && Number.isFinite(e.time) && ['review','quiz','read','listen'].includes(e.type)).map(e => ({time:e.time,type:e.type,correct:!!e.correct}));
-    return { version:1, words, articles, notes, reviews, reading, events, lessons, listening, settings: { accent: s.settings?.accent === 'es-MX' ? 'es-MX' : 'es-ES', rate: [0.7,0.85,1].includes(Number(s.settings?.rate)) ? Number(s.settings.rate) : 0.85 } };
+    const events = s.events.filter(e => e && Number.isFinite(e.time) && ['review','quiz','read','listen','course'].includes(e.type)).map(e => ({time:e.time,type:e.type,correct:!!e.correct}));
+    return { version:1, words, articles, notes, reviews, reading, events, lessons, listening, questions, courseProgress, settings: { accent: s.settings?.accent === 'es-MX' ? 'es-MX' : 'es-ES', rate: [0.7,0.85,1].includes(Number(s.settings?.rate)) ? Number(s.settings.rate) : 0.85 } };
   }
   const api = { norm, clean, csvParse, csvWords, schedule, safeURL, validateState };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
