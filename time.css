@@ -18,6 +18,8 @@
 .time-directions{display:flex;gap:8px;margin:15px 0;flex-wrap:wrap}.time-session .flash-word{overflow-wrap:anywhere;font-size:clamp(24px,4vw,40px)}
 .time-saved{margin:10px 0 18px}.time-prompt{margin:20px 0;font-size:18px;line-height:1.7}.time-answer-review{padding:22px;margin-top:14px}
 .time-answer-review h3{margin:12px 0}.time-answer-review p{margin:8px 0;color:var(--muted)}.time-answer-review strong{overflow-wrap:anywhere}
-.time-home-link{margin-top:20px}.time-session .session-top{gap:12px;flex-wrap:wrap}.time-session .session-controls{flex-wrap:wrap}
+.time-session .session-top{gap:12px;flex-wrap:wrap}.time-session .session-controls{flex-wrap:wrap}
 @media(max-width:1100px){.time-group-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.time-group-grid,.time-dialogues{grid-template-columns:1fr}.time-group,.time-word-list,.time-lesson-next{padding:20px}.time-word-row>div{grid-template-columns:minmax(0,1fr)}.time-word-row small{grid-column:1}.time-session .session-controls .btn{min-width:0;flex:1}.time-session .quiz-card{padding:22px 18px}.time-session .accent-keys{flex-wrap:wrap}.time-session input{font-size:16px}.time-prompt{font-size:17px}}
+
+.lex-study-pack{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:20px 24px;margin-bottom:24px}.lex-study-pack h2{margin:5px 0}.lex-study-pack p{color:var(--muted)}.lex-study-pack .btn{flex-shrink:0}@media(max-width:600px){.lex-study-pack{align-items:flex-start;flex-direction:column;padding:20px;gap:12px}}
