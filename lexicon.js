@@ -14,6 +14,9 @@
   verb('ser','是；表示身份或特征',['soy','eres','es','somos','sois','son']);
   verb('estar','在；处于某种状态',['estoy','estás','está','estamos','estáis','están']);
   verb('tener','有；拥有',['tengo','tienes','tiene','tenemos','tenéis','tienen']);
+  verb('hacer','做',['hago','haces','hace','hacemos','hacéis','hacen']);
+  verb('mirar','看；观看',['miro','miras','mira','miramos','miráis','miran']);
+  verb('ver','看见；见到',['veo','ves','ve','vemos','veis','ven']);
   verb('ir','去',['voy','vas','va','vamos','vais','van']);
   verb('querer','想要；爱',['quiero','quieres','quiere','queremos','queréis','quieren']);
   verb('poder','能；可以',['puedo','puedes','puede','podemos','podéis','pueden']);

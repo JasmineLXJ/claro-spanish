@@ -75,6 +75,8 @@
     const courseProgress = {};
     const cp = s.courseProgress?.u01_l01;
     if(cp && typeof cp === 'object') courseProgress.u01_l01 = {last:Number.isFinite(cp.last)?cp.last:0,answers:Object.fromEntries(Object.entries(cp.answers||{}).filter(([id,a])=>/^p0[1-5]$/.test(id)&&a&&typeof a==='object').map(([id,a])=>[id,{answer:clean(a.answer,300),correct:!!a.correct,usedHint:!!a.usedHint,time:Number.isFinite(a.time)?a.time:0}]))};
+    const timeData=typeof module!=='undefined'&&module.exports?require('./time-data.js'):root.ClaroTimeData;
+    courseProgress.time_basics=timeData.validateProgress(s.courseProgress?.time_basics);
     const reviews = Object.fromEntries(words.filter(x => s.reviews?.[x.id] && Number.isFinite(s.reviews[x.id].due)).map(x => {
       const r = s.reviews[x.id]; return [x.id, { stage: Math.max(0,Math.min(6,Number(r.stage)||0)), due: Math.max(0,r.due), interval: Math.max(0,Number(r.interval)||0), last: Math.max(0,Number(r.last)||0) }];
     }));
