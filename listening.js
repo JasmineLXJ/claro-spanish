@@ -1,14 +1,46 @@
 /* A listening workspace. Media stays on the device; only metadata enters backups. */
 (function(root){
   'use strict';
-  root.ClaroListening={create};
+  root.ClaroListening={create,createYouTubeLoader,youtubeErrorMessage};
+  function youtubeErrorMessage(code){
+    if([101,150].includes(Number(code)))return '这个视频不允许在其他网页内播放。可打开 YouTube 原视频，或关联原声音频继续。';
+    if(Number(code)===100)return 'YouTube 未提供这个视频，可能已被移除或设为私密。可关联原声音频继续。';
+    if(Number(code)===153)return 'YouTube 未接受此播放器的来源识别（153）。可打开原视频，或关联原声音频继续。';
+    return 'YouTube 原视频暂时无法播放'+(code?'（'+String(code).slice(0,10)+'）':'')+'。可重试连接，或关联原声音频继续。';
+  }
+  function createYouTubeLoader(win,doc){
+    let pending=null;
+    return function load(){
+      if(win.YT?.Player)return Promise.resolve();
+      if(pending)return pending;
+      const request=new Promise((resolve,reject)=>{
+        const previous=win.onYouTubeIframeAPIReady,script=doc.createElement('script');
+        let settled=false,timeout;
+        const finish=error=>{
+          if(settled)return;settled=true;clearTimeout(timeout);script.onerror=null;script.onload=null;
+          if(win.onYouTubeIframeAPIReady===ready)win.onYouTubeIframeAPIReady=previous;
+          if(error){script.remove();reject(error);}else resolve();
+        };
+        const ready=()=>{try{if(typeof previous==='function')previous();}catch{}if(win.YT?.Player)finish();};
+        win.onYouTubeIframeAPIReady=ready;
+        script.src='https://www.youtube.com/iframe_api';script.async=true;
+        script.onerror=()=>finish(new Error('YouTube 播放器组件未能载入。可重试连接，或关联原声音频继续。'));
+        script.onload=()=>{if(win.YT?.Player)finish();};
+        timeout=setTimeout(()=>finish(new Error('YouTube 播放器组件加载超时。可重试连接，或关联原声音频继续。')),15000);
+        try{doc.head.append(script);}catch{finish(new Error('YouTube 播放器组件未能载入。可重试连接，或关联原声音频继续。'));}
+      });
+      pending=request;
+      request.then(()=>{if(pending===request)pending=null;},()=>{if(pending===request)pending=null;});
+      return request;
+    };
+  }
   function create(api){
     const S=ClaroStudy, $=s=>document.querySelector(s), {esc,btn,icon,go,toast,persist,getState,openModal}=api;
     const state=()=>getState();
     const map=ClaroSentenceMap.create({esc,btn,icon,current:()=>effective(current()),lesson:()=>lesson,collectWord:api.collectWord});
     const effective=c=>{const a=ClaroAnalysis.resolve(c);return {...c,translation:c.translation||a?.translation||'',explanation:c.explanation||a?.focus||'',analysis:a,grammarIds:[...new Set([...c.grammarIds,...(a?.grammarIds||[])])]};};
     const exportLesson=()=>({...lesson,cues:lesson.cues.map(effective)});
-    let lesson,index=0,mode='listen',loop=false,speed=1,player,timer,yt,mediaURL,recordingURL,recorder,stream,recordTimer,recordGeneration=0,recordPending=false,mountGeneration=0;
+    let lesson,index=0,mode='listen',loop=false,speed=1,player,timer,yt,ytReady=false,ytReadyTimer,mediaURL,recordingURL,recorder,stream,recordTimer,recordGeneration=0,recordPending=false,mountGeneration=0;
     let reveal=false,feedback=null,drafts={},capabilities=null,importBusy=false,explainBusy=false,useVideo=false,lastLessonId='';
     const time=t=>`${Math.floor(t/60)}:${String(Math.floor(t%60)).padStart(2,'0')}`;
     const current=()=>lesson?.cues[index];
@@ -47,36 +79,53 @@
     function getTime(){try{return yt?yt.getCurrentTime():player?.currentTime||0;}catch{return 0;}}
     function isPlaying(){try{return yt?yt.getPlayerState()===1:player&&!player.paused&&!player.ended;}catch{return false;}}
     function clearRecording(){recordGeneration++;recordPending=false;if(recorder&&recorder.state!=='inactive'){recorder.onstop=null;recorder.stop();}stream?.getTracks().forEach(t=>t.stop());stream=null;recorder=null;clearTimeout(recordTimer);if(recordingURL)URL.revokeObjectURL(recordingURL);recordingURL=null;}
-    function cleanup(){mountGeneration++;clearInterval(timer);timer=null;pause();clearRecording();player=null;try{yt?.destroy();}catch{}yt=null;if(mediaURL)URL.revokeObjectURL(mediaURL);mediaURL=null;}
+    function cleanup(){mountGeneration++;clearInterval(timer);timer=null;clearTimeout(ytReadyTimer);ytReady=false;pause();clearRecording();player=null;try{yt?.destroy();}catch{}yt=null;if(mediaURL)URL.revokeObjectURL(mediaURL);mediaURL=null;}
     function setCue(i,play=false){if(!lesson)return;pause();clearRecording();index=Math.max(0,Math.min(lesson.cues.length-1,i));progress().index=index;persist();feedback=null;reveal=false;seek(current().start);paint();if(play)playSentence();}
     async function playSentence(){
       if(!lesson)return;api.stopSpeech();
       const generation=mountGeneration;
-      try{if(yt?.playVideo){seek(current().start);yt.playVideo();}else if(player?.src){seek(current().start);player.playbackRate=speed;await player.play();}else toast('先关联本地音频，或等待 YouTube 播放器准备完成。');}catch{if(generation===mountGeneration)toast('播放未开始，请点击播放器的播放按钮，或重新选择音频文件。');}
+      try{if(ytReady&&yt?.playVideo){seek(current().start);yt.playVideo();}else if(player?.src){seek(current().start);player.playbackRate=speed;await player.play();}else toast('播放器还未就绪。可重试 YouTube 连接，或关联本地音频。');}catch{if(generation===mountGeneration)toast('播放未开始，请点击播放器的播放按钮，或重新选择音频文件。');}
     }
-    let ytPromise;
-    function youtubeAPI(){if(root.YT?.Player)return Promise.resolve();if(!ytPromise)ytPromise=new Promise((resolve,reject)=>{const old=root.onYouTubeIframeAPIReady;root.onYouTubeIframeAPIReady=()=>{old?.();resolve();};const script=document.createElement('script');script.src='https://www.youtube.com/iframe_api';script.onerror=()=>{ytPromise=null;reject(new Error('YouTube 播放器未能连接。请检查网络，或关联本地音频。'));};document.head.append(script);setTimeout(()=>{if(!root.YT?.Player){ytPromise=null;reject(new Error('YouTube 连接超时。可以关联本地音频继续。'));}},15000);});return ytPromise;}
+    const youtubeAPI=createYouTubeLoader(root,document);
+    const hasLocalAudio=()=>!!(lesson?.audioUrl||lesson?.audioKey);
+    async function mountAudio(generation,notice=''){
+      if(lesson.youtubeId)$('#lesson-source').innerHTML=`<div class="audio-cover"><span class="eyebrow">YOUTUBE · 已提取原声音轨</span><p lang="es">Escucha una frase.<br><em>Hazla tuya.</em></p><span>跟着字幕，听清每一小段。</span></div><audio id="lesson-audio" controls preload="metadata" aria-label="课程原声音频"></audio>`;
+      const audio=$('#lesson-audio');let src=lesson.audioUrl;
+      if(lesson.audioKey){const blob=await mediaStore(lesson.audioKey);if(generation!==mountGeneration)return;if(!blob?.size)throw new Error('当前浏览器中未找到原声音频。请重新关联原文件；字幕、讲解和学习记录仍保留。');mediaURL=URL.createObjectURL(blob);src=mediaURL;}
+      if(generation!==mountGeneration)return;
+      player=audio;audio.playbackRate=speed;
+      audio.addEventListener('error',()=>{if(generation===mountGeneration)status('原声音频未能读取，请重新关联对应的音频文件。',true);});
+      audio.addEventListener('loadedmetadata',()=>{if(generation===mountGeneration){seek(current().start);if(audio.duration<lesson.cues.at(-1).end-.5)status('音频比字幕时间轴短，请检查是否选择了对应的原文件。',true);}});
+      audio.addEventListener('seeking',()=>{if(generation!==mountGeneration)return;const t=audio.currentTime,c=current();if(t>=c.start&&t<c.end)return;const i=lesson.cues.findIndex(c=>t>=c.start&&t<c.end);if(i>=0&&i!==index){clearRecording();index=i;progress().index=i;feedback=null;reveal=false;persist();paint();}});
+      audio.src=src;
+      status(notice||(lesson.original?'Mónica · es-ES · 原创示范合成音':'原声音频 · 保存在当前浏览器'),false);
+    }
+    async function youtubeFailed(message,generation){
+      if(generation!==mountGeneration)return;
+      clearTimeout(ytReadyTimer);ytReady=false;try{yt?.destroy();}catch{}yt=null;
+      if(hasLocalAudio()){
+        useVideo=false;const toggle=$('[data-action="toggle-video"]');if(toggle)toggle.textContent='看原视频';
+        try{await mountAudio(generation,'YouTube 原视频未能载入，已切换为本地原声。');}
+        catch(error){if(generation===mountGeneration)status(message+' '+error.message,true,true);}
+      }else status(message+' 当前素材尚未关联本地音频。',true,true);
+    }
     async function mount(){
       if(!$('#sentence-practice')||!lesson)return;const generation=mountGeneration;
       paint();
       const local=!useVideo&&(lesson.audioUrl||lesson.audioKey);
       try{
-        if(local){
-          if(lesson.youtubeId)$('#lesson-source').innerHTML=`<div class="audio-cover"><span class="eyebrow">YOUTUBE · 已提取原声音轨</span><p lang="es">Escucha una frase.<br><em>Hazla tuya.</em></p><span>跟着字幕，听清每一小段。</span></div><audio id="lesson-audio" controls preload="metadata" aria-label="课程原声音频"></audio>`;
-          player=$('#lesson-audio');let src=lesson.audioUrl;
-          if(lesson.audioKey){const blob=await mediaStore(lesson.audioKey);if(generation!==mountGeneration)return;if(!blob)throw new Error('本机音频未找到，请重新关联原文件；字幕与讲解仍然保留。');mediaURL=URL.createObjectURL(blob);src=mediaURL;}
-          player.src=src;player.playbackRate=speed;player.addEventListener('error',()=>{if(generation===mountGeneration)status('音频未能读取，请重新关联原文件。',true);});player.addEventListener('loadedmetadata',()=>{if(generation===mountGeneration){seek(current().start);if(player.duration<lesson.cues.at(-1).end-.5)status('音频比字幕时间轴短，请检查是否选择了对应的原文件。',true);}});
-          player.addEventListener('seeking',()=>{if(!player)return;const t=player.currentTime,c=current();if(t>=c.start&&t<c.end)return;const i=lesson.cues.findIndex(c=>t>=c.start&&t<c.end);if(i>=0&&i!==index){clearRecording();index=i;progress().index=i;feedback=null;reveal=false;persist();paint();}});
-          status(lesson.original?'Mónica · es-ES · 原创示范合成音':'原声音频 · 保存在当前浏览器',false);
-        }else if(lesson.youtubeId){
+        if(local){await mountAudio(generation);}
+        else if(lesson.youtubeId){
           await youtubeAPI();if(generation!==mountGeneration)return;
-          yt=new YT.Player('youtube-player',{videoId:lesson.youtubeId,host:'https://www.youtube-nocookie.com',playerVars:{origin:location.origin,playsinline:1,rel:0},events:{onReady:()=>{if(generation!==mountGeneration)return;yt.setPlaybackRate(speed);status('YouTube 原视频 · 按字幕时间逐句播放',false);},onError:()=>status('此视频暂时无法嵌入播放。可打开原视频，或关联本地音频继续。',true)}});
+          ytReady=false;let ended=false;
+          yt=new root.YT.Player('youtube-player',{videoId:lesson.youtubeId,host:'https://www.youtube-nocookie.com',playerVars:{origin:location.origin,playsinline:1,rel:0},events:{onReady:event=>{if(generation!==mountGeneration||ended)return;ytReady=true;clearTimeout(ytReadyTimer);const readyPlayer=event?.target||yt;readyPlayer?.setPlaybackRate(speed);status('YouTube 原视频 · 按字幕时间逐句播放',false);},onError:event=>{if(generation!==mountGeneration||ended)return;ended=true;void youtubeFailed(youtubeErrorMessage(event?.data),generation);}}});
+          if(!ytReady&&!ended)ytReadyTimer=setTimeout(()=>{if(generation===mountGeneration&&!ytReady&&!ended){ended=true;void youtubeFailed('YouTube 视频播放器等待超时。可重试连接，或关联原声音频继续。',generation);}},15000);
         }else status('已载入字幕。关联对应音频后即可逐句听读。',true);
-      }catch(error){if(generation!==mountGeneration)return;status(error.message,true);}
+      }catch(error){if(generation!==mountGeneration)return;if(!local&&lesson.youtubeId)await youtubeFailed(error.message,generation);else status(error.message,true);}
       if(generation!==mountGeneration)return;
       timer=setInterval(()=>{if(!isPlaying())return;const t=getTime(),c=current();if(t>=c.end-.035){if(loop)seek(c.start);else pause();}},80);
     }
-    function status(message,attach){const el=$('#lesson-media-status');if(!el)return;el.textContent=message+' ';if(attach||!lesson.original){const label=document.createElement('label');label.className='attach-audio';label.append('关联 / 更换音频');const input=document.createElement('input');input.type='file';input.id='attach-lesson-audio';input.accept='audio/*';label.append(input);el.append(label);}}
+    function status(message,attach,retry=false){const el=$('#lesson-media-status');if(!el)return;el.textContent=message+' ';if(retry){const button=document.createElement('button');button.type='button';button.className='text-btn';button.dataset.action='retry-youtube';button.textContent='重试 YouTube 连接';el.append(button);}if(attach||!lesson.original){const label=document.createElement('label');label.className='attach-audio';label.append('关联 / 更换音频');const input=document.createElement('input');input.type='file';input.id='attach-lesson-audio';input.accept='audio/*';label.append(input);el.append(label);}}
     async function record(){
       if(recorder?.state==='recording'){recorder.stop();stream?.getTracks().forEach(t=>t.stop());clearTimeout(recordTimer);return;}
       if(recordPending)return;
@@ -104,6 +153,7 @@
     async function copyExport(){const text=$('#lesson-export-preview').value;try{await navigator.clipboard.writeText(text);toast('已复制字幕与讲解。');}catch{const el=$('#lesson-export-preview');el.focus();el.select();if(document.execCommand('copy'))toast('已复制字幕与讲解。');else toast('请选中预览文字后手动复制。');}}
     const actions={
       'toggle-video':()=>{useVideo=!useVideo;api.render();},
+      'retry-youtube':()=>{useVideo=true;api.render();},
       'import-lesson':importForm,'cue-play':playSentence,'cue-stop':pause,'cue-prev':()=>setCue(index-1),'cue-next':()=>setCue(index+1),'cue-select':b=>setCue(Number(b.dataset.index)),
       'cue-loop':b=>{loop=!loop;b.setAttribute('aria-pressed',loop);b.classList.toggle('active',loop);},
       'lesson-mode':b=>{pause();clearRecording();mode=b.dataset.value;reveal=false;feedback=null;paint();},
@@ -126,7 +176,7 @@
       if(t.id==='lesson-export-format'){const preview=$('#lesson-export-preview');if(preview)preview.value=ClaroQuestionsCore.lessonExport(exportLesson(),t.value);return;}
       if(t.id==='lesson-speed'){speed=Number(t.value);if(player)player.playbackRate=speed;try{yt?.setPlaybackRate(speed);}catch{}return;}
       if(t.id==='subtitle-file'){const file=t.files[0];if(!file)return;const form=$('#lesson-import-form');try{if(file.size>2*1024*1024)throw new Error('字幕超过 2 MB，请先截取片段。');const raw=await file.text(),cues=S.parseSubtitles(raw);form.elements.subtitles.value=JSON.stringify(cues,null,2);let metadata={};try{metadata=JSON.parse(raw);}catch{}if(!form.elements.title.value)form.elements.title.value=metadata.title||file.name.replace(/\.[^.]+$/,'');if(metadata.source&&S.youtubeId(metadata.source))form.elements.source.value=metadata.source;if(metadata.level)form.elements.level.value=metadata.level;form.querySelector('.form-error').textContent=`已读取 ${cues.length} 句字幕。`;}catch(error){form.querySelector('.form-error').textContent=error.message;}return;}
-      if(t.id==='attach-lesson-audio'){const file=t.files[0],l=lesson;if(!file)return;try{if(file.size>100*1024*1024)throw new Error('请选择 100 MB 以内的音频。');const key=api.uid();await mediaStore(key,file);l.audioKey=key;l.audioUrl='';persist('已关联本机音频。');api.render();}catch(error){toast(error.message);}}
+      if(t.id==='attach-lesson-audio'){const file=t.files[0],l=lesson;if(!file)return;try{if(file.size>100*1024*1024)throw new Error('请选择 100 MB 以内的音频。');const key=api.uid();await mediaStore(key,file);l.audioKey=key;l.audioUrl='';useVideo=false;persist('已关联本机音频。');api.render();}catch(error){toast(error.message);}}
     }
     function input(t){if(t.id==='dictation-answer'){drafts[lesson.id+'/'+current().id]=t.value;feedback=null;}}
     return {library,workspace,mount,cleanup,actions,submit,change,input,pause,currentSource,captureSelection:map.capture,refresh:paint};
