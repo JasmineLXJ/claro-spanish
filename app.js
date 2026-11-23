@@ -66,7 +66,7 @@
     if(base==='listen')listening.mount();
     if(base==='questions'||base==='question-import'||base==='settings')questions.mount();
     const focusId=base==='grammar'?route.split('/')[1]:'';
-    if(focusId)requestAnimationFrame(()=>{const el=document.getElementById('entry-'+focusId);if(el){if(el.tagName==='DETAILS')el.open=true;el.classList.add('linked-entry');el.scrollIntoView({block:'start',behavior:'instant'});el.tabIndex=-1;el.focus({preventScroll:true});}});
+    if(focusId)requestAnimationFrame(()=>{const el=document.getElementById('entry-'+focusId);if(el){if(el.tagName==='DETAILS')el.open=true;if(!el.classList.contains('grammar-study-sheet')){el.classList.add('linked-entry');el.scrollIntoView({block:'start',behavior:'instant'});}el.tabIndex=-1;el.focus({preventScroll:true});}});
     if(base==='search')requestAnimationFrame(()=>$('#global-search')?.focus());
   }
   const searchKinds={words:'词汇',reading:'文章',grammar:'语法知识',notes:'我的笔记',verbs:'动词变位',listening:'视频 / 音频字幕',questions:'学习问答'};

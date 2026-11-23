@@ -2,10 +2,11 @@
 (function(root){
   'use strict';
   const groups=[
-    {id:'nouns',title:'名词与修饰',question:'名词怎样配冠词和形容词？',mark:'el / la',ids:['g1','g20','g6','g12']},
-    {id:'verbs',title:'动词与时态',question:'动词怎样随人称和时间变化？',mark:'yo →',ids:['g3','g2','g9','g15','g16']},
-    {id:'sentence',title:'句子结构与代词',question:'一句话怎样搭起来、怎样指代？',mark:'S + V',ids:['g19','g4','g14']},
-    {id:'patterns',title:'常用句型',question:'想做、能做、喜欢和必须怎样说？',mark:'quiero…',ids:['g5','g7','g8','g10','g11','g13']},
+    {id:'core-verbs',title:'常用动词辨析',question:'ser、estar、hay、tener、gustar 与 llamarse',mark:'ser / estar',ids:['g2','g4','g9','g5','g7']},
+    {id:'nouns',title:'名词与形容词',question:'冠词、名词分类、性数配合与比较级',mark:'el / la',ids:['g1','g20','g6','g12']},
+    {id:'verbs',title:'动词与时态',question:'现在时、条件式与现在完成时',mark:'yo →',ids:['g3','g15','g16']},
+    {id:'patterns',title:'句型与搭配',question:'去向与计划、意愿、目的与必须',mark:'quiero…',ids:['g8','g10','g11','g13']},
+    {id:'sentence',title:'句子结构与代词',question:'主语、宾语、表语和宾语代词',mark:'S + V',ids:['g19','g14']},
     {id:'social',title:'交际表达',question:'见面、问候和听不懂时怎样说？',mark:'¿qué?',ids:['g17','g18']}
   ];
   const bank={};
