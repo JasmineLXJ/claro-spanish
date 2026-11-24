@@ -145,11 +145,26 @@
     ['数字的拼写规律','0–15 先记基础；16–19 用 dieci-；20 veinte；21–29 用 veinti- 连写；31–99 非整十数用“整十 + y + 个位”；正好100是 cien。','dieciséis; veintitrés; treinta y ocho; cien'],
     ['月份、星期与大小写','月份、星期通常小写。在某个月用 en + 月份；六月 junio，七月 julio。','En julio, estudio español los lunes.']
   ];
+  const extra=typeof module!=='undefined'&&module.exports?require('./conversation-data.js'):root.ClaroConversationData;
+  const byWord=new Map(words.map(w=>[norm(w.word),w]));
+  for(const w of extra.words)if(!byWord.has(norm(w.word))){words.push(w);byWord.set(norm(w.word),w);}
+  for(const g of extra.groups){
+    const ids=[];
+    for(const w of extra.words.filter(w=>w.group===g.id)){
+      const canonical=byWord.get(norm(w.word));
+      if(!ids.includes(canonical.id))ids.push(canonical.id);
+    }
+    groups.push({...g,wordIds:ids});
+  }
+  exercises.push(...extra.exercises);
+  const {corpus,guides,conjugations,persons,activities}=extra;
+  function wordsForGroup(id){const g=groups.find(g=>g.id===id);return g?.wordIds?g.wordIds.map(id=>words.find(w=>w.id===id)).filter(Boolean):words.filter(w=>w.group===id);}
+  const audioTexts=[...corpus.map(r=>r.es),...Object.values(guides).flatMap(rows=>rows.map(r=>r.example))];
   function mergeWords(state){
     let added=0;const existing=new Set(state.words.map(w=>norm(w.word))),ids=new Set([...state.words,...state.articles,...state.notes].map(w=>w.id));
     for(const w of words){if(existing.has(norm(w.word)))continue;let id=w.id;while(ids.has(id))id+='_t';state.words.push({...w,id,lexical:structuredClone(w.lexical)});existing.add(norm(w.word));ids.add(id);added++;}return added;
   }
-  function grade(input,item){const correct=item.answers.some(a=>norm(a)===norm(input));const fold=v=>norm(v).normalize('NFD').replace(/[\u0300-\u036f]/gu,'');return {correct,accentOnly:!correct&&item.answers.some(a=>fold(a)===fold(input))};}
+  function grade(input,item){const correct=item.answers.some(a=>norm(a)===norm(input));const fold=v=>norm(v).normalize('NFD').replace(/\u0301/gu,'').normalize('NFC');return {correct,accentOnly:!correct&&item.answers.some(a=>fold(a)===fold(input))};}
   function validateProgress(value){
     const v=value&&typeof value==='object'?value:{},validQ=new Set(exercises.map(x=>x.id)),validW=new Set(words.map(x=>x.id)),validG=new Set(groups.map(x=>x.id));
     const attempts=(Array.isArray(v.attempts)?v.attempts:[]).filter(a=>a&&validQ.has(a.id)&&Number.isFinite(a.time)).slice(-3000).map(a=>({id:a.id,input:String(a.input||'').slice(0,300),correct:!!a.correct,usedHint:!!a.usedHint,revealed:!!a.revealed,time:a.time}));
@@ -160,6 +175,6 @@
     }
     return {attempts,active};
   }
-  const api={norm,number,groups,words,exercises,dialogue,rules,mergeWords,grade,validateProgress};
+  const api={norm,number,groups,words,exercises,dialogue,rules,mergeWords,grade,validateProgress,wordsForGroup,corpus,guides,conjugations,persons,activities,audioTexts};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.ClaroTimeData=api;
 })(typeof window!=='undefined'?window:globalThis);

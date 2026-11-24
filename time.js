@@ -6,30 +6,36 @@
     const state=()=>getState(),data=()=>state().courseProgress.time_basics||=(D.validateProgress()),group=id=>D.groups.find(g=>g.id===id);
     const wordRecord=w=>state().words.find(x=>D.norm(x.word)===D.norm(w.word))||w;
     const shuffle=items=>items.map(x=>({x,r:Math.random()})).sort((a,b)=>a.r-b.r).map(v=>v.x);
-    function controls(id){return `<div class="time-actions">${btn('记忆闪卡','time-start-cards',`data-group="${id}"`,'primary small')}${btn('做三道题','time-start-quiz',`data-group="${id}"`,'small')}</div>`;}
+    function controls(id){return `<div class="time-actions">${btn('生词闪卡','time-start-cards',`data-group="${id}"`,'primary small')}${btn('三道填空','time-start-quiz',`data-group="${id}"`,'small')}</div>`;}
     function page(parts=[]){
       if(['cards','practice'].includes(parts[0]))return session();
       if(group(parts[0]))return lesson(parts[0]);
       const a=data().active;
-      return `<a class="back-btn" href="#words">${icon('back')} 返回我的词库</a>`+pageTitle('LOS NÚMEROS Y EL TIEMPO','数字、星期与月份','从记得一个词，到能说清楚“我在什么时候做什么”。')+
+      return `<a class="back-btn" href="#words">${icon('back')} 返回我的词库</a>`+pageTitle('MI CUADERNO DE ESPAÑOL','对话学习词包','生词用闪卡回忆，短语和句子放进填空题里练。')+
         `${a&&a.index<a.ids.length?`<div class="notice">上次的${a.mode==='cards'?'闪卡':'练习'}还没完成：${esc(group(a.group).title)}，第 ${a.index+1} / ${a.ids.length} ${a.mode==='cards'?'张':'题'}。 <a class="btn small" href="#words/time/${a.mode==='cards'?'cards':'practice'}">继续上次</a></div>`:''}`+
-        `<p class="time-intro">建议从星期开始，每次只练一组：看重点 → 遮住答案回忆 → 换词造句。新增词汇已收录到“我的词库”，也能用顶部搜索找到。</p><div class="time-group-grid">${D.groups.map(g=>`<article class="card time-group"><span class="eyebrow">${esc(g.subtitle)}</span><a href="#words/time/${g.id}"><h2>${esc(g.title)}</h2></a><p>${esc(g.tip)}</p><a class="text-btn" href="#words/time/${g.id}">查词与重点 ${icon('arrow')}</a>${controls(g.id)}</article>`).join('')}</div>`+
+        `<p class="time-intro">从本次要学的主题开始：先看原句和解析，再记生词，最后做三道填空。词汇已收录到“我的词库”，也可用顶部搜索找到。</p><div class="time-group-grid">${D.groups.map(g=>`<article class="card time-group"><span class="eyebrow">${esc(g.subtitle)}</span><a href="#words/time/${g.id}"><h2>${esc(g.title)}</h2></a><p>${esc(g.tip)}</p><span class="time-group-count">${D.wordsForGroup(g.id).length} 张生词卡 · ${D.exercises.filter(q=>q.group===g.id).length} 道练习</span><a class="text-btn" href="#words/time/${g.id}">查词与重点 ${icon('arrow')}</a>${controls(g.id)}</article>`).join('')}</div>`+
         dialogue()+rules()+`<p class="info-note">词条、复习时间、首次答题与提示使用记录保存在当前浏览器，可随完整备份导出。闪卡自评和一次答对都不代表已经掌握；隔天再试一次。</p>`;
     }
     function dialogue(){return `<section class="time-section"><div class="section-heading"><h2>把课文放回对话里</h2><span>空格与拼写已整理</span></div><div class="time-dialogues">${D.dialogue.map(([q,zh,a,translation])=>`<article class="card time-dialogue"><div><strong lang="es">${esc(q)}</strong><button class="icon-btn" data-action="speak" data-text="${esc(q)}" aria-label="朗读问句 ${esc(q)}">${icon('sound')}</button></div><p>${esc(zh)}</p><div><strong lang="es">${esc(a)}</strong><button class="icon-btn" data-action="speak" data-text="${esc(a)}" aria-label="朗读回答 ${esc(a)}">${icon('sound')}</button></div><p>${esc(translation)}</p></article>`).join('')}</div></section>`;}
     function rules(){return `<section class="time-section"><div class="section-heading"><h2>语法重点</h2><span>一次看一条</span></div><div class="time-rules">${D.rules.map(([title,body,example])=>`<details class="card"><summary>${esc(title)}</summary><p>${esc(body)}</p><div lang="es">${esc(example)}</div></details>`).join('')}</div></section>`;}
+    function materials(id){
+      const notes=D.guides[id]||[],sources=D.corpus.filter(r=>r.group===id),writing=D.activities.filter(a=>a.group===id);
+      const tables=id==='irregular'?`<section class="time-section"><h2>六个人称一起比较</h2><div class="time-conjugations">${D.conjugations.map(v=>`<article class="card time-conjugation"><h3 lang="es">${esc(v.verb)}</h3><p>${esc(v.meaning)} · ${esc(v.pattern)}</p><table><thead><tr><th scope="col">人称</th><th scope="col">现在时</th></tr></thead><tbody>${v.forms.map((f,i)=>`<tr><th scope="row">${esc(D.persons[i])}</th><td lang="es">${esc(f)}</td></tr>`).join('')}</tbody></table></article>`).join('')}</div></section>`:'';
+      return `${notes.length?`<section class="time-section"><h2>先理解这几条</h2><div class="time-rules">${notes.map(n=>`<details class="card"><summary>${esc(n.title)}</summary><p>${esc(n.body)}</p><div lang="es">${esc(n.example)}</div></details>`).join('')}</div></section>`:''}${tables}${sources.length?`<section class="time-section"><div class="section-heading"><h2>课文原句与中文</h2><span>${sources.length} 条</span></div><div class="time-source-list">${sources.map(r=>`<article class="time-source"><div><strong lang="es">${esc(r.es)}</strong><button class="icon-btn" data-action="speak" data-text="${esc(r.es)}" aria-label="朗读 ${esc(r.es)}">${icon('sound')}</button></div><p>${esc(r.zh)}</p>${r.note?`<p class="info-note">${esc(r.note)}</p>`:''}</article>`).join('')}</div></section>`:''}${writing.length?`<section class="time-section"><h2>填空之后，自己说一段</h2>${writing.map(a=>`<article class="card time-lesson-next"><h3>${esc(a.title)}</h3><p>${esc(a.text)}</p></article>`).join('')}</section>`:''}`;
+    }
     function lesson(id){
-      const g=group(id),rows=D.words.filter(w=>w.group===id),questions=D.exercises.filter(q=>q.group===id),attempts=data().attempts.filter(a=>questions.some(q=>q.id===a.id));
-      return `<a class="back-btn" href="#words/time">${icon('back')} 返回数字、星期与月份</a>`+pageTitle('PASO A PASO',esc(g.title),esc(g.tip),controls(id))+
-        `<div class="time-lesson-stats"><span>${rows.length} 条词汇与词块</span><span>${questions.length} 道回忆与应用题</span><span>${attempts.length} 次作答记录</span></div>`+
+      const g=group(id),rows=D.wordsForGroup(id),questions=D.exercises.filter(q=>q.group===id),attempts=data().attempts.filter(a=>questions.some(q=>q.id===a.id));
+      return `<a class="back-btn" href="#words/time">${icon('back')} 返回对话学习词包</a>`+pageTitle('PASO A PASO',esc(g.title),esc(g.tip),controls(id))+
+        `<div class="time-lesson-stats"><span>${rows.length} 条词汇与词块</span><span>${questions.length} 道回忆与应用题</span><span>${attempts.length} 次作答记录</span></div>`+materials(id)+
         `<section class="card time-word-list"><h2>先看，再遮住回想</h2>${rows.map(w=>`<div class="time-word-row"><div><strong lang="es">${esc(w.word)}</strong><span>${esc(w.meaning)}</span><small>${esc(w.note)}</small></div><button class="icon-btn" data-action="speak" data-text="${esc(w.word)}" aria-label="朗读 ${esc(w.word)}">${icon('sound')}</button></div>`).join('')}</section>`+
-        `<section class="card time-lesson-next"><h2>让它变成你自己的话</h2><p>先试中文提示的闪卡，再做三道短题。错题会优先出现在下一轮；完整句子按参考表达核对。</p>${controls(id)}</section>${id==='phrases'?dialogue()+rules():id.startsWith('n')?`<p class="info-note">这里先练数字的独立读法。放在名词前时，uno 等可能变为 un / una；本组数量应用题使用已核对的例句。</p>`:''}`;
+        `<section class="card time-lesson-next"><h2>让它变成你自己的话</h2><p>先试中文提示的闪卡，再做三道短题。错题会优先出现在下一轮；填空题一次只补一个词或一段词块。</p>${controls(id)}</section>${id==='phrases'?dialogue()+rules():id.startsWith('n')?`<p class="info-note">这里先练数字的独立读法。放在名词前时，uno 等可能变为 un / una；本组数量应用题使用已核对的例句。</p>`:''}`;
     }
     function start(mode,id,weak=false){
       if(!group(id))return;
+      const modal=document.getElementById('modal');if(modal?.open)modal.close();
       let items;
       if(mode==='cards'){
-        items=shuffle(D.words.filter(w=>w.group===id)).sort((a,b)=>(state().reviews[wordRecord(a).id]?.due||0)-(state().reviews[wordRecord(b).id]?.due||0)).slice(0,10);
+        items=shuffle(D.wordsForGroup(id)).sort((a,b)=>(state().reviews[wordRecord(a).id]?.due||0)-(state().reviews[wordRecord(b).id]?.due||0)).slice(0,10);
       }else{
         const latest=new Map(data().attempts.map(a=>[a.id,a]));
         const priority=q=>{const a=latest.get(q.id);return !a?1:!a.correct||a.usedHint||a.revealed?0:2;};

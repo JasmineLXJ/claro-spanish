@@ -1,4 +1,6 @@
 .time-intro{max-width:780px;margin-bottom:24px;color:var(--muted)}
+.time-group-count{font-size:12px;color:var(--muted)}
+.time-source-list{margin:14px 0 24px}.time-source{padding:16px 0;border-bottom:1px solid var(--line)}.time-source>div{display:flex;justify-content:space-between;align-items:flex-start;gap:14px}.time-source strong{overflow-wrap:anywhere}.time-source p{margin-top:7px;color:var(--muted)}.time-conjugations{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin:14px 0 24px}.time-conjugation{padding:20px;min-width:0}.time-conjugation p{color:var(--muted);margin:6px 0 12px}.time-conjugation table{width:100%;border-collapse:collapse}.time-conjugation th,.time-conjugation td{text-align:left;padding:8px 0;border-bottom:1px solid var(--line);font-weight:400}.time-conjugation td{color:var(--blue);font-weight:600}.time-section>.time-rules{margin:14px 0 24px}@media(max-width:600px){.time-conjugations{grid-template-columns:1fr}.time-conjugation{padding:18px}.time-source{padding:14px 0}}
 .time-group-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
 .time-group{padding:24px;display:flex;flex-direction:column;gap:13px;min-width:0}
 .time-group .eyebrow{letter-spacing:0;font-size:11px}.time-group p{color:var(--muted);flex:1}

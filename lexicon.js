@@ -21,6 +21,25 @@
   verb('querer','想要；爱',['quiero','quieres','quiere','queremos','queréis','quieren']);
   verb('poder','能；可以',['puedo','puedes','puede','podemos','podéis','pueden']);
   verb('poner','放；放置',['pongo','pones','pone','ponemos','ponéis','ponen']);
+  verb('preferir','更喜欢；宁愿',['prefiero','prefieres','prefiere','preferimos','preferís','prefieren']);
+  verb('pedir','请求；要某物',['pido','pides','pide','pedimos','pedís','piden']);
+  verb('salir','出去；离开',['salgo','sales','sale','salimos','salís','salen']);
+  verb('venir','来',['vengo','vienes','viene','venimos','venís','vienen']);
+  verb('levantarse','起床',['me levanto','te levantas','se levanta','nos levantamos','os levantáis','se levantan']);
+  verb('despertarse','醒来',['me despierto','te despiertas','se despierta','nos despertamos','os despertáis','se despiertan']);
+  verb('ducharse','淋浴',['me ducho','te duchas','se ducha','nos duchamos','os ducháis','se duchan']);
+  verb('lavarse','洗自己',['me lavo','te lavas','se lava','nos lavamos','os laváis','se lavan']);
+  verb('vestirse','穿衣服',['me visto','te vistes','se viste','nos vestimos','os vestís','se visten']);
+  verb('acostarse','上床；躺下',['me acuesto','te acuestas','se acuesta','nos acostamos','os acostáis','se acuestan']);
+  verb('cepillarse','给自己刷洗',['me cepillo','te cepillas','se cepilla','nos cepillamos','os cepilláis','se cepillan']);
+  verb('ponerse','穿上；涂上（用于自身）',['me pongo','te pones','se pone','nos ponemos','os ponéis','se ponen']);
+  verb('dar','给',['doy','das','da','damos','dais','dan']);
+  for(const [lemma,meaning] of [['comprar','购买'],['escribir','写'],['planificar','规划'],['decidir','决定'],['caminar','散步'],['cenar','吃晚饭'],['desayunar','吃早饭'],['entrar','进入'],['compartir','分享'],['colocar','摆放'],['inventar','创造'],['organizar','组织'],['explicar','解释'],['participar','参加'],['celebrar','庆祝'],['pasar','度过']]){
+    const ending=lemma.slice(-2),stem=lemma.slice(0,-2),suffixes=ending==='ar'?['o','as','a','amos','áis','an']:ending==='er'?['o','es','e','emos','éis','en']:['o','es','e','imos','ís','en'];verb(lemma,meaning,suffixes.map(s=>stem+s));
+  }
+  verb('empezar','开始',['empiezo','empiezas','empieza','empezamos','empezáis','empiezan']);
+  verb('contar','讲述；数数',['cuento','cuentas','cuenta','contamos','contáis','cuentan']);
+  verb('recordar','记得；纪念',['recuerdo','recuerdas','recuerda','recordamos','recordáis','recuerdan']);
   verb('caber','放得下；容纳得下',['quepo','cabes','cabe','cabemos','cabéis','caben']);
   verb('oler','闻起来；闻',['huelo','hueles','huele','olemos','oléis','huelen']);
   verb('haber','助动词；构成完成时',['he','has','ha','hemos','habéis','han']);
