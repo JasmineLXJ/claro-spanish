@@ -29,7 +29,7 @@
       line('Wendy','Sí, claro.','当然收。','Yes, of course.'),
       {stage:'滴——刷卡成功。'},
       line('Wendy','Perfecto.','好了。','Perfect.'),
-      line('Wendy','Siéntate donde quieras.','你想坐哪儿就坐哪儿。','Sit wherever you like.'),
+      line('Wendy','Siéntate donde quieras.','坐下吧，想坐哪里都可以。','Sit wherever you like.'),
       line('Wendy','Ahora te lo llevo.','我这就给你送过去。','I will bring it over in a moment.'),
       line('Jasmine','¡Muchas gracias!','非常感谢！','Thank you so much!'),
       line('Jasmine','¡Qué amable!','你真好！','That is so kind of you!')
@@ -66,7 +66,7 @@
       line('Jasmine','Lo siento, no entiendo algunas palabras.','不好意思，有些词我听不懂。','Sorry, I do not understand some words.'),
       line('Wendy','¿Solo tres meses?','才三个月？','Only three months?'),
       line('Wendy','¡Hablas muy bien español!','你西班牙语已经说得很好了！','You speak Spanish very well!'),
-      line('Wendy','¡Tienes mucho talento!','你很有天赋！','You are very talented!'),
+      line('Wendy','¡Tienes mucho talento!','你很有天赋！','You have a lot of talent!'),
       line('Jasmine','Gracias.','谢谢。','Thank you.'),
       line('Jasmine','¿Qué significa “talento”?','“Talento”是什么意思？','What does “talento” mean?'),
       line('Wendy','“Talent”, en inglés.','就是英语里的“talent”，天赋。','“Talent”, in English.'),
@@ -75,26 +75,121 @@
     ]}
   ];
   const grammar=[
-    ['不必每次都说“我、你”','Me llamo Jasmine. / Soy Wendy.','动词本身往往已经说明是谁。me llamo = 我叫；soy = 我是。初次见面可接 ¿Y tú?（你呢？）。','先掌握'],
-    ['ser：介绍身份和来自哪里','Soy china. / Soy de Guangzhou.','国籍用 ser + 国籍形容词，来自某地用 ser de + 地名。china 是“中国的／中国人（女性）”；China 大写是国家名。Soy China 不用于表达“我是中国人”。','先掌握'],
-    ['ser 和 estar 在这课里各做什么','Soy diseñadora. / Estoy aquí por trabajo.','soy 介绍身份或职业；estoy aquí 表示我现在在这里。本课先记“身份用 ser、所在位置用 estar”，以后再扩展其他用法。职业前通常不加 un/una。','先掌握'],
-    ['怎样把一句话变成问题','¿Cómo te llamas? / ¿De dónde eres?','cómo 问“怎样”；de dónde 问“来自哪里”；cuánto 问“多少”；qué 问“什么”。西语问句用 ¿ … ?。书写要保留重音，本课测试暂时不扣重音分。','先掌握'],
-    ['形容词跟着说话的人变化','Soy china. / Soy española. / Encantada.','Jasmine 和 Wendy 都是女性，所以用 china、española、encantada。男性对应 chino、español、encantado。由说话人的性别决定，不由听话人决定。','先掌握'],
-    ['礼貌点单与请求','¿Me pones un café, por favor? / ¿Puedes repetir?','在西班牙咖啡店，¿Me pones…? 是常见的口语点单方式，加 por favor 更礼貌。puedes + 动词原形：¿Puedes repetir?（你能再说一次吗？）。','先掌握'],
-    ['名词的阴阳性与冠词','un café / una ventana / el rollo / la receta','un/el 搭配阳性单数，una/la 搭配阴性单数。复数是 unos/los、unas/las。词尾只能作线索，要把名词与冠词一起记：la leche 以 -e 结尾，也是阴性。','先掌握'],
-    ['一个、还有一个与省略','¿Quieres uno? / Un rollo también.','uno 在这里代替阳性的 un rollo。Y el café con leche, tres euros con cincuenta. 省略了前面出现过的 cuesta，口语中很自然。','看懂即可'],
-    ['天气、味道与现场感受','Hace frío. / El rollo está buenísimo.','天气冷用 hace frío。评价眼前食物的味道用 está bueno；buenísimo 加强为“特别好吃”。¡Qué bien huele! 是“闻起来真香！”。','整句记忆'],
-    ['刚刚做好的与今天早上做的','recién hechos / Lo he hecho yo esta mañana.','recién hechos 修饰复数阳性 rollos；单数是 recién hecho。he hecho 来自 hacer 的现在完成时。lo 在这里指“这个肉桂卷”。第一课先理解整句，不必背完这个时态。','整句记忆'],
-    ['持续了多久','Llevo tres meses aprendiendo español.','llevar + 时间 + 动名词，表示某事已经持续一段时间，而且还在继续。aprendiendo 来自 aprender。先替换时间：Llevo dos meses aprendiendo español.','整句记忆'],
-    ['两种不同的“怎么说”','¿Cómo se dice “designer” en español? / ¿Qué significa “talento”?','前一句问“某个词用西语怎么说”；后一句问“听到的这个词是什么意思”。把它们当作遇到生词时的救场句。','先掌握']
-  ];
+  [
+    "主语可以省略",
+    "Me llamo Jasmine. / Soy Wendy.",
+    [
+      "动词已说明主语，yo / tú 常可省略。",
+      "me llamo = 我叫；soy = 我是。",
+      "¿Y tú? = 你呢？"
+    ]
+  ],
+  [
+    "介绍国籍与来源",
+    "Soy china. / Soy de Guangzhou.",
+    [
+      "国籍：ser + 国籍词。",
+      "来源：ser de + 地名。",
+      "china = 中国人（女性）；China = 中国。"
+    ]
+  ],
+  [
+    "ser 与 estar",
+    "Soy diseñadora. / Estoy aquí por trabajo.",
+    [
+      "本课用 ser 介绍身份、职业。",
+      "用 estar 说明现在在哪里。",
+      "职业前通常不加 un / una。"
+    ]
+  ],
+  [
+    "提问的常用词",
+    "¿Cómo te llamas? / ¿De dónde eres?",
+    [
+      "cómo 怎样；dónde 哪里。",
+      "cuánto 多少；qué 什么。",
+      "西语问句用 ¿ … ?。"
+    ]
+  ],
+  [
+    "自我介绍中的性别",
+    "Soy china. / Encantada.",
+    [
+      "女性：china、española、encantada。",
+      "男性：chino、español、encantado。",
+      "这里的词尾随说话人变化。"
+    ]
+  ],
+  [
+    "礼貌点单与请求",
+    "¿Me pones un café, por favor? / ¿Puedes repetir?",
+    [
+      "¿Me pones…?：西班牙常见点单用语。",
+      "por favor = 请。",
+      "puedes 后接动词原形：puedes repetir。"
+    ]
+  ],
+  [
+    "冠词与阴阳性",
+    "un café / una ventana / el rollo / la receta",
+    [
+      "阳性：el / un；阴性：la / una。",
+      "复数：los / unos；las / unas。",
+      "名词连同冠词记：la leche（阴性）。"
+    ]
+  ],
+  [
+    "代指与省略",
+    "¿Quieres uno? / Un rollo también.",
+    [
+      "uno 在这里代指一个肉桂卷。",
+      "también = 也。",
+      "重复的信息可省略，如价格句中的 cuesta。"
+    ]
+  ],
+  [
+    "天气与味道",
+    "Hace frío. / El rollo está buenísimo.",
+    [
+      "hace frío = 天气冷。",
+      "está bueno = 好吃；buenísimo = 特别好吃。",
+      "¡Qué bien huele! = 闻起来真香！"
+    ]
+  ],
+  [
+    "刚做好的与已经做了",
+    "recién hechos / Lo he hecho yo esta mañana.",
+    [
+      "recién hecho = 刚做好的；复数用 hechos。",
+      "he hecho = 我做了（现在完成时）。",
+      "lo 在这里指前面的肉桂卷。"
+    ]
+  ],
+  [
+    "某件事持续了多久",
+    "Llevo tres meses aprendiendo español.",
+    [
+      "llevar + 时间 + 动名词：持续到现在。",
+      "aprendiendo 来自 aprender（学习）。",
+      "tres meses = 三个月。"
+    ]
+  ],
+  [
+    "遇到生词怎么问",
+    "¿Cómo se dice “designer” en español? / ¿Qué significa “talento”?",
+    [
+      "¿Cómo se dice X en español?：X 用西语怎么说？",
+      "¿Qué significa X?：X 是什么意思？"
+    ]
+  ]
+];
   // 每一行均对应原文出现的动词，包含本课词形和最有用的现在时。
   const verbs=[
     ['ser','是；身份、来源','soy / eres / es','somos / sois / son','Soy china.','不规则'],
     ['estar','在；状态','estoy / estás / está','estamos / estáis / están','Estoy aquí por trabajo.','不规则'],
     ['llamarse','叫作','me llamo / te llamas / se llama','nos llamamos / os llamáis / se llaman','Me llamo Jasmine.','自复动词'],
     ['tener','有','tengo / tienes / tiene','tenemos / tenéis / tienen','Tenemos café americano.','不规则'],
-    ['querer','想要','quiero / quieres / quiere','queremos / queréis / quieren','¿Quieres uno?','e → ie；donde quieras 中的 quieras 是虚拟式，先整句记忆'],
+    ['querer','想要','quiero / quieres / quiere','queremos / queréis / quieren','¿Quieres uno?','e → ie；quieras 是虚拟式'],
     ['poder','能；可以','puedo / puedes / puede','podemos / podéis / pueden','¿Puedes repetir?','o → ue'],
     ['poner','放；提供（点单）','pongo / pones / pone','ponemos / ponéis / ponen','¿Me pones un café?','yo 不规则'],
     ['costar','价格是','cuesto / cuestas / cuesta','costamos / costáis / cuestan','El rollo cuesta cuatro euros.','o → ue；价格常用 cuesta/cuestan'],
@@ -110,7 +205,7 @@
     ['dedicarse','从事','me dedico / te dedicas / se dedica','nos dedicamos / os dedicáis / se dedican','¿A qué te dedicas?','自复动词'],
     ['decir','说','digo / dices / dice','decimos / decís / dicen','¿Cómo se dice…?','不规则'],
     ['repetir','重复','repito / repites / repite','repetimos / repetís / repiten','¿Puedes repetir?','e → i'],
-    ['enseñar','教','enseño / enseñas / enseña','enseñamos / enseñáis / enseñan','Gracias por enseñarme.','规则 -ar；me = 教我'],
+    ['enseñar','教','enseño / enseñas / enseña','enseñamos / enseñáis / enseñan','Gracias por enseñarme.','enseñarme = 教我'],
     ['aprender','学习','aprendo / aprendes / aprende','aprendemos / aprendéis / aprenden','aprendiendo español','规则 -er；动名词 aprendiendo'],
     ['sentir','感到','siento / sientes / siente','sentimos / sentís / sienten','Lo siento.','e → ie；道歉固定说法'],
     ['entender','理解','entiendo / entiendes / entiende','entendemos / entendéis / entienden','No entiendo algunas palabras.','e → ie'],
@@ -118,7 +213,7 @@
     ['significar','意思是','significo / significas / significa','significamos / significáis / significan','¿Qué significa “talento”?','规则 -ar'],
     ['animar','鼓励','animo / animas / anima','animamos / animáis / animan','¡Me animas mucho!','规则 -ar'],
     ['haber','助动词','he / has / ha','hemos / habéis / han','Lo he hecho yo esta mañana.','此处与 hecho 组成完成时'],
-    ['aprovechar','利用；享用','aprovecho / aprovechas / aprovecha','aprovechamos / aprovecháis / aprovechan','¡Que aproveche!','祝福语整句记忆；aproveche 非直陈现在时']
+    ['aprovechar','利用；享用','aprovecho / aprovechas / aprovecha','aprovechamos / aprovecháis / aprovechan','¡Que aproveche!','aproveche 是现在虚拟式']
   ];
   const nouns={
     masculine:[['el café','咖啡'],['el café americano','美式咖啡'],['el capuchino','卡布奇诺'],['el café con leche','加奶咖啡'],['el rollo de canela','肉桂卷'],['el euro','欧元'],['el frío','寒冷'],['el sol','太阳'],['el efectivo','现金'],['el trabajo','工作'],['el español','西班牙语'],['el mes → los meses','月'],['el talento','天赋']],
