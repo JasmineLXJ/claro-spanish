@@ -1,16 +1,25 @@
 const test=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs');
 const D=require('../topic-data.js'),C=require('../topic-core.js'),R=require('../topic-reading.js');
-function tab(){
- const listeners={},pending=[],initial={quiz:C.fresh(D.questions.map(q=>q.id)),openSections:['dialogue'],rate:.9},nodes={};let renders=0,writes=0,details=[];
+function tab(options={}){
+ const listeners={},mainListeners={},timers=new Map();let timerId=0;const pending=[],initial={quiz:C.fresh(D.questions.map(q=>q.id)),openSections:['dialogue'],rate:.9},nodes={};let renders=0,writes=0,details=[];
  const node=()=>({hidden:true,textContent:'',addEventListener(){},focus(){}});
  const main=node();Object.defineProperty(main,'innerHTML',{set(html){renders++;details=[...html.matchAll(/<details\b([^>]+)>/g)].map(m=>{const el={id:m[1].match(/id="([^"]+)"/)[1],open:/\sopen(?:\s|$)/.test(m[1])};el.addEventListener=(type,fn)=>{if(type==='toggle'&&el.open)pending.push(fn);};return el;});}});
- main.querySelectorAll=sel=>sel==='details'?details:[];
+ main.querySelectorAll=sel=>sel==='details'?details:[];main.addEventListener=(name,fn)=>{(mainListeners[name]||=[]).push(fn);};
  nodes.content=main;for(const id of ['save-warning','announcement','restart-dialog'])nodes[id]=node();
  const window={ClaroTopic:D,ClaroLessonCore:C,ClaroReading:R,addEventListener:(name,fn)=>listeners[name]=fn,scrollTo(){}};
- const context={window,document:{getElementById:id=>nodes[id]||null,querySelector:()=>node(),title:''},location:{hash:'#learn'},localStorage:{getItem:()=>JSON.stringify(initial),setItem(){writes++;}},setTimeout:()=>0,clearTimeout(){},console};
+ if(options.synth)window.speechSynthesis=options.synth;
+ const context={window,SpeechSynthesisUtterance:class {constructor(text){this.text=text;}},document:{getElementById:id=>nodes[id]||null,querySelector:()=>node(),title:''},location:{hash:'#learn'},localStorage:{getItem:()=>JSON.stringify(initial),setItem(){writes++;}},setTimeout:(fn,ms)=>{const id=++timerId;timers.set(id,{fn,ms});return id;},clearTimeout:id=>timers.delete(id),console};
  vm.runInNewContext(fs.readFileSync(require.resolve('../topic-app.js'),'utf8'),context);
- return {get renders(){return renders;},get writes(){return writes;},flush(){while(pending.length)pending.shift()();},receive(data){listeners.storage({key:'claro-barcelona-lesson-v2',newValue:JSON.stringify(data)});},initial};
+ return {get message(){return nodes.announcement.textContent;},click(button){for(const fn of mainListeners.click||[])fn({target:button});},fire(ms){for(const [id,t] of [...timers])if(t.ms===ms){timers.delete(id);t.fn();}},get renders(){return renders;},get writes(){return writes;},flush(){while(pending.length)pending.shift()();},receive(data){listeners.storage({key:'claro-barcelona-lesson-v2',newValue:JSON.stringify(data)});},initial};
 }
 test('首次渲染展开栏目时不回写记录，避免跨标签页反馈循环',()=>{const t=tab();t.flush();assert.equal(t.writes,0);});
 test('忽略其他标签页仅修改声音或展开栏目的记录，不重绘当前页面',()=>{const t=tab();t.flush();const n=t.renders;t.receive({...t.initial,voiceURI:'old-version-voice',openSections:['dialogue','grammar']});assert.equal(t.renders,n);t.flush();assert.equal(t.writes,0);});
 test('真实答题进度变化同步一次，接收端不再次写回',()=>{const t=tab();t.flush();const data=JSON.parse(JSON.stringify(t.initial));data.quiz.draft='Buenos';t.receive(data);assert.equal(t.renders,2);t.flush();assert.equal(t.writes,0);t.receive(data);assert.equal(t.renders,2);});
+
+function playbackButton(){const b={dataset:{action:'play',source:'line',index:'0'},attributes:{},innerHTML:'',setAttribute(k,v){this.attributes[k]=v;},removeAttribute(k){delete this.attributes[k];},closest(){return this;}};return b;}
+function engine(){const monica={name:'Mónica',lang:'es-ES'},s={voices:[monica],spoken:[],cancels:0,resumes:0,paused:false,getVoices(){return this.voices;},cancel(){this.cancels++;},speak(u){this.spoken.push(u);},resume(){this.resumes++;this.paused=false;},addEventListener(){}};return s;}
+test('点播放直接提交 Mónica 朗读，空闲及正常结束时不多余取消队列',()=>{const synth=engine(),t=tab({synth}),b=playbackButton();assert.equal(synth.cancels,0);t.click(b);assert.equal(synth.spoken.length,1);const u=synth.spoken[0];assert.equal(u.text,'¡Buenos días!');assert.equal(u.voice.name,'Mónica');assert.equal(u.volume,1);assert.equal(b.attributes['aria-busy'],'true');u.onstart();assert.equal(b.attributes['aria-busy'],undefined);u.onend();assert.equal(b.attributes['aria-pressed'],'false');assert.equal(synth.cancels,0);t.click(b);assert.equal(synth.spoken.length,2);});
+test('暂停的引擎会恢复；主动停止才取消，旧回调不干扰新一句',()=>{const synth=engine(),t=tab({synth}),b=playbackButton();synth.paused=true;t.click(b);assert.equal(synth.resumes,1);const old=synth.spoken[0];t.click(b);assert.equal(synth.cancels,1);t.click(b);old.onerror({error:'canceled'});assert.equal(b.attributes['aria-pressed'],'true');});
+test('语音列表尚未加载时明确提示，稍后再点可正常播放',()=>{const synth=engine(),voice=synth.voices[0];synth.voices=[];const t=tab({synth}),b=playbackButton();t.click(b);assert.match(t.message,/暂未检测到/);assert.equal(synth.spoken.length,0);synth.voices=[voice];t.click(b);assert.equal(synth.spoken.length,1);});
+test('同步异常和浏览器阻止播放会显示反馈并复原按钮',()=>{const synth=engine(),t=tab({synth}),b=playbackButton();synth.speak=()=>{throw new Error('native audio failure');};assert.doesNotThrow(()=>t.click(b));assert.match(t.message,/朗读未能启动/);assert.equal(b.attributes['aria-pressed'],'false');synth.speak=u=>synth.spoken.push(u);t.click(b);synth.spoken[0].onerror({error:'not-allowed'});assert.match(t.message,/浏览器阻止/);assert.equal(b.attributes['aria-pressed'],'false');});
+test('引擎没有开始回调时结束等待并提示，不再静默失败',()=>{const synth=engine(),t=tab({synth}),b=playbackButton();t.click(b);t.fire(4000);assert.match(t.message,/朗读未启动/);assert.equal(b.attributes['aria-pressed'],'false');});

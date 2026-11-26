@@ -20,7 +20,7 @@
 
 `topic-reading.js` 管理人工词义对应、对话分组和固定声音选择；`topic-data.js` 管理内容；`topic-core.js` 管理学习状态与判分；`topic-app.js` 管理页面；`topic.css` 管理样式。
 
-本目录不需要安装依赖或构建。在这里执行 `python3 -m http.server 8766 --bind 127.0.0.1` 即可预览。执行 `node --test tests/*.cjs` 运行 11 项主题与阅读检查。
+本目录不需要安装依赖或构建。在这里执行 `python3 -m http.server 8766 --bind 127.0.0.1` 即可预览。执行 `node --test tests/*.cjs` 运行 19 项主题、阅读、同步及播放流程检查。
 
 本课进度键为 `claro-barcelona-lesson-v2`，记录只在当前浏览器保存，不与个人手账记录合并。不同域名间的旧预览进度不会自动迁移。
 

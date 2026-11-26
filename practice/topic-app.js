@@ -34,10 +34,30 @@ function summary(){const s=C.stats(quiz),weak=quiz.queue.filter(id=>quiz.items[i
 function render(){stopSpeech();const [page,scene]=location.hash.slice(1).split('/');main.innerHTML=page==='learn'?lesson():page==='test'?test():home();document.getElementById('save-warning').hidden=!storageError;if(unreadable)document.getElementById('save-warning').textContent='上次进度暂时无法读取，已保留原数据。本次练习暂不保存。';document.title=page==='learn'?'课前学习 · Claro':page==='test'?'主动回忆 · Claro':'Claro · 巴塞罗那的第一杯咖啡';main.querySelectorAll('details').forEach(el=>el.addEventListener('toggle',()=>{const id=el.id.replace('section-','');if(openSections.has(id)===el.open)return;el.open?openSections.add(id):openSections.delete(id);save();}));populateVoices();if(page==='learn'&&scene){const target=document.getElementById('scene-'+scene);if(target){document.getElementById('section-dialogue').open=true;target.scrollIntoView({block:'start'});}}else window.scrollTo(0,0);lastInput=null;pinnedMeaning=null;}
 function focusAnswer(){const target=main.querySelector('#recall-answer,.slot:not(.good),.slot');target?.focus({preventScroll:true});}
 function refreshQuiz(){save();render();main.focus({preventScroll:true});}
-function stopSpeech(){clearTimeout(playTimer);const b=speaking;speaking=null;if('speechSynthesis' in window)window.speechSynthesis.cancel();if(b){b.setAttribute('aria-pressed','false');b.innerHTML=icon('play');}utterance=null;}
-function populateVoices(){voiceList=[];if('speechSynthesis' in window){const selected=R.voice(speechSynthesis.getVoices());if(selected)voiceList=[selected];}}
+function stopSpeech(cancel=true){clearTimeout(playTimer);const b=speaking;speaking=null;utterance=null;if(b){b.setAttribute('aria-pressed','false');b.removeAttribute('aria-busy');b.innerHTML=icon('play');if(cancel){try{window.speechSynthesis?.cancel();}catch{}}}}
+function populateVoices(){voiceList=[];try{if('speechSynthesis' in window){const selected=R.voice(window.speechSynthesis.getVoices());if(selected)voiceList=[selected];}}catch{}}
 function highlightMeaning(id){main.querySelectorAll('[data-meaning]').forEach(el=>{el.classList.toggle('meaning-active',el.dataset.meaning===id);el.setAttribute('aria-pressed',String(el.dataset.meaning===pinnedMeaning));});}
-function play(button){if(speaking===button){stopSpeech();return;}stopSpeech();populateVoices();if(!('speechSynthesis' in window)||!voiceList.length){announce('当前设备没有可用的西班牙西语声音，请启用设备的西班牙语（西班牙）语音后重试。');return;}const source=button.dataset.source==='question'?D.questions[Number(button.dataset.index)]?.display:lines[Number(button.dataset.index)]?.es;if(!source)return;const voice=voiceList[0];const u=new SpeechSynthesisUtterance(source);utterance=u;u.voice=voice;u.lang=voice.lang;u.rate=rate;u.pitch=1;speaking=button;button.setAttribute('aria-pressed','true');button.innerHTML=icon('stop');let started=false;u.onstart=()=>{started=true;clearTimeout(playTimer);};u.onend=()=>{if(speaking===button)stopSpeech();};u.onerror=e=>{if(speaking!==button)return;stopSpeech();if(!['interrupted','canceled'].includes(e.error))announce('这次朗读没有播放成功，请重试或换一个西语声音。');};playTimer=setTimeout(()=>{if(!started&&speaking===button){stopSpeech();announce('朗读没有启动，请重试或换一个西语声音。');}},8000);speechSynthesis.speak(u);}
+function play(button){
+ if(speaking===button){stopSpeech();announce('已停止朗读。');return;}
+ stopSpeech();
+ const source=button.dataset.source==='question'?D.questions[Number(button.dataset.index)]?.display:lines[Number(button.dataset.index)]?.es;
+ if(!source){announce('这句话暂时无法朗读，请刷新页面后重试。');return;}
+ if(!window.speechSynthesis||typeof SpeechSynthesisUtterance!=='function'){announce('当前浏览器不支持朗读，请在 Safari 或 Chrome 中打开此页。');return;}
+ announce('正在准备朗读…');
+ try{
+  populateVoices();
+  if(!voiceList.length){announce('暂未检测到西班牙西语声音，请稍后再点一次播放；若仍无声音，请在 Safari 或 Chrome 中打开。');return;}
+  const synth=window.speechSynthesis,voice=voiceList[0],u=new SpeechSynthesisUtterance(source);
+  utterance=u;u.voice=voice;u.lang=voice.lang;u.rate=rate;u.pitch=1;u.volume=1;
+  speaking=button;button.setAttribute('aria-pressed','true');button.setAttribute('aria-busy','true');button.innerHTML=icon('stop');
+  u.onstart=()=>{if(utterance!==u)return;clearTimeout(playTimer);button.removeAttribute('aria-busy');announce('正在朗读…');};
+  u.onend=()=>{if(utterance===u)stopSpeech(false);};
+  u.onerror=e=>{if(utterance!==u)return;stopSpeech(false);const messages={'not-allowed':'浏览器阻止了朗读，请在 Safari 或 Chrome 中打开此页后点击播放。','audio-busy':'声音设备正被占用，请关闭其他正在播放声音的应用后重试。','audio-hardware':'浏览器无法使用声音输出设备，请检查系统声音输出。','voice-unavailable':'所选西语声音暂不可用，请检查设备是否已下载西班牙语语音。','language-unavailable':'设备暂不支持西班牙西语朗读，请检查已下载的语音。'};announce(messages[e.error]||'这次朗读未能完成，请重新点播放，或在 Safari、Chrome 中打开此页。');};
+  playTimer=setTimeout(()=>{if(utterance!==u)return;stopSpeech();announce('朗读未启动，请在 Safari 或 Chrome 中打开此页重试。');},4000);
+  if(synth.paused&&typeof synth.resume==='function')synth.resume();
+  synth.speak(u);
+ }catch{stopSpeech();announce('朗读未能启动，请在 Safari 或 Chrome 中打开此页重试。');}
+}
 function startNew(queue){quiz=C.fresh(queue);save();navigate('#test');}
 main.addEventListener('focusin',e=>{if(e.target.matches('textarea,.slot'))lastInput=e.target;});
 main.addEventListener('input',e=>{if(e.target.id==='recall-answer')quiz.draft=e.target.value;if(e.target.dataset.slot!==undefined){quiz.blanks[Number(e.target.dataset.slot)]=e.target.value;e.target.classList.remove('wrong','good');e.target.removeAttribute('aria-invalid');}save();});
@@ -51,7 +71,7 @@ main.addEventListener('focusout',e=>{if(e.target.matches('[data-meaning]'))highl
 document.getElementById('restart-dialog').addEventListener('click',e=>{const action=e.target.closest('[data-action]')?.dataset.action;if(action==='cancel-restart')e.currentTarget.close();if(action==='confirm-restart'){e.currentTarget.close();startNew(pendingIds);}});
 document.querySelector('.skip').addEventListener('click',e=>{e.preventDefault();main.focus();});
 window.addEventListener('hashchange',()=>{render();main.focus({preventScroll:true});});
-window.addEventListener('pagehide',stopSpeech);if('speechSynthesis' in window)speechSynthesis.addEventListener('voiceschanged',populateVoices);
+window.addEventListener('pagehide',stopSpeech);window.speechSynthesis?.addEventListener?.('voiceschanged',populateVoices);
 window.addEventListener('storage',e=>{if(e.key!==KEY||!e.newValue)return;try{const o=JSON.parse(e.newValue),incoming=C.validate(o.quiz,D.questions);if(JSON.stringify(incoming)===JSON.stringify(quiz))return;quiz=incoming;announce('学习进度已从另一页面更新。');render();}catch{announce('另一页面的记录无法读取，请保持当前页面继续学习。');}});
 render();
 })();
