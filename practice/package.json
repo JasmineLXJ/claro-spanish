@@ -1,0 +1,10 @@
+{
+  "name": "claro-barcelona-practice",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Claro 巴塞罗那咖啡店主题样章",
+  "scripts": {
+    "test": "node --test tests/lesson.test.cjs",
+    "preview": "python3 -m http.server 8766 --bind 127.0.0.1"
+  }
+}
