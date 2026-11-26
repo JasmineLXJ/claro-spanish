@@ -68,6 +68,5 @@ const pairs=new Map([
 function groups(line){return (pairs.get(line.es)||[]).filter(group=>['es','en','zh'].every((lang,i)=>line[lang].toLocaleLowerCase().includes(group[i].toLocaleLowerCase())));}
 function segments(line,lang){const column={es:0,en:1,zh:2}[lang],text=line[lang],ranges=groups(line).map((g,index)=>({start:text.toLocaleLowerCase().indexOf(g[column].toLocaleLowerCase()),length:g[column].length,group:index})).sort((a,b)=>a.start-b.start);let cursor=0;const result=[];for(const r of ranges){if(r.start<cursor)continue;if(r.start>cursor)result.push({text:text.slice(cursor,r.start),group:null});result.push({text:text.slice(r.start,r.start+r.length),group:r.group});cursor=r.start+r.length;}if(cursor<text.length)result.push({text:text.slice(cursor),group:null});return result;}
 function turns(scene){const result=[];for(const line of scene.lines){const last=result.at(-1);if(line.stage)result.push({stage:line.stage});else if(last?.speaker===line.speaker)last.lines.push(line);else result.push({speaker:line.speaker,lines:[line]});}return result;}
-function voice(voices){const spanish=voices.filter(v=>/^es[-_]ES$/i.test(v.lang));return spanish.find(v=>/m[oó]nica/i.test(v.name))||spanish[0]||null;}
-return {pairs,groups,segments,turns,voice};
+return {pairs,groups,segments,turns};
 });

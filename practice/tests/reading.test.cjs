@@ -19,7 +19,3 @@ test('问候不把 días 硬对应成 morning；muy bien 按意思片段对应',
 test('聊天合并连续同一说话人，保留场景顺序、每句及刷卡旁白',()=>{
  for(const scene of D.scenes){const turns=R.turns(scene),flat=turns.flatMap(t=>t.stage?[{stage:t.stage}]:t.lines);assert.deepEqual(flat,scene.lines);for(const t of turns)if(!t.stage)assert.ok(t.lines.every(l=>l.speaker===t.speaker));}
 });
-test('固定首选 Mónica，忽略旧选择，不切换到其他地区口音',()=>{
- const mx={name:'Paulina',lang:'es-MX'},es={name:'Other',lang:'es-ES'},monica={name:'Mónica',lang:'es-ES'};
- assert.equal(R.voice([mx,es,monica]),monica);assert.equal(R.voice([mx,es]),es);assert.equal(R.voice([mx,{name:'Samantha',lang:'en-US'}]),null);assert.equal(R.voice([]),null);
-});
