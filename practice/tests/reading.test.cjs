@@ -6,7 +6,7 @@ test('三语对应在原文中存在、互不覆盖，分段保留全部原文',
   assert.ok(R.pairs.has(line.es),line.es);
   const raw=R.pairs.get(line.es);assert.equal(R.groups(line).length,raw.length,line.es);
   for(const [col,lang] of ['es','en','zh'].entries()){
-   const lower=line[lang].toLocaleLowerCase(),ranges=raw.map(g=>{assert.equal(g.length,4);assert.ok(R.categories.some(c=>c.id===g[3]));assert.ok(g[col]);const start=lower.indexOf(g[col].toLocaleLowerCase());assert.ok(start>=0,`${line.es} / ${lang} / ${g[col]}`);return [start,start+g[col].length];}).sort((a,b)=>a[0]-b[0]);
+   const lower=line[lang].toLocaleLowerCase(),ranges=raw.map(g=>{assert.equal(g.length,4);assert.ok(R.categories.some(c=>c.id===g[3]));assert.ok(g[col]);const start=R.locate(line[lang],g[col]);assert.ok(start>=0,`${line.es} / ${lang} / ${g[col]}`);return [start,start+g[col].length];}).sort((a,b)=>a[0]-b[0]);
    ranges.forEach((r,i)=>{if(i)assert.ok(r[0]>=ranges[i-1][1],`overlap: ${line.es} / ${lang}`);});
    const pieces=R.segments(line,lang);assert.equal(pieces.map(p=>p.text).join(''),line[lang]);assert.equal(pieces.filter(p=>p.group!==null).length,raw.length,line.es);
   }
@@ -23,3 +23,13 @@ test('聊天合并连续同一说话人，保留场景顺序、每句及刷卡�
 test('词类图例固定，重复词义在不同句子中使用同一分类',()=>{assert.equal(new Set(R.categories.map(c=>c.id)).size,R.categories.length);for(const line of lines){for(const g of R.groups(line)){if(/^(un )?café( con leche)?$|rollo de canela/i.test(g[0]))assert.equal(g[3],'noun');if(g[0].toLowerCase()==='gracias')assert.equal(g[3],'expression');if(g[0].toLowerCase()==='muy bien')assert.equal(g[3],'adverb');}}});
 test('Siéntate 与地点从句分开对应，避免整句一个色块',()=>{const line=lines.find(l=>l.es==='Siéntate donde quieras.');assert.deepEqual(R.groups(line),[['Siéntate','Sit','坐下吧','verb'],['donde quieras','wherever you like','想坐哪里都可以','adverb']]);});
 test('语法解析为两到三个短要点，全部动词都有六个人称变位',()=>{for(const [title,example,points] of D.grammar){assert.ok(title&&example);assert.ok(Array.isArray(points));assert.ok(points.length>=2&&points.length<=3);assert.ok(points.every(p=>typeof p==='string'&&p.length<=70));}for(const v of D.verbs){const forms=[...v[2].split(' / '),...v[3].split(' / ')];assert.equal(forms.length,6,v[0]);assert.ok(forms.every(Boolean));assert.ok(v[4]);}});
+
+test('点单的 me、pones、un 及 también 都明确对应；短词不会误标进其他单词',()=>{
+ const coffee=lines.find(l=>l.es==='¿Me pones un café, por favor?'),milk=lines.find(l=>l.es==='Un café con leche, por favor.'),rolls=lines.find(l=>l.es.startsWith('También tenemos'));
+ assert.ok(R.groups(coffee).some(g=>g[0]==='Me'&&g[1]==='me'&&g[2]==='我'));
+ assert.ok(R.groups(coffee).some(g=>g[0]==='pones'&&g[2]==='给'));
+ assert.ok(R.groups(milk).some(g=>g[0]==='Un'&&g[2]==='一杯'));
+ assert.ok(R.groups(rolls).some(g=>g[0]==='También'&&g[2]==='还'));
+ assert.equal(R.locate('Could you get me a coffee, please?','a'),17);assert.equal(R.locate('have','a'),-1);assert.equal(R.locate('name','me'),-1);
+});
+test('每个动词的例句都有中文译文',()=>{for(const v of D.verbs)assert.ok(typeof v[6]==='string'&&v[6].trim(),v[0]);});
