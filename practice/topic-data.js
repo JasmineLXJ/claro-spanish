@@ -256,6 +256,44 @@
   const contexts={
     morning:'早晨走进店里，先主动向店主打招呼。',well:'回应“你好吗”，先说自己很好，再表达感谢。',coffee:'在点单场景直接说想要的饮品，加上“请”，即使省略动词也很自然。',price:'指着正在谈论的肉桂卷，询问一个的价格。',here:'回答店员关于堂食还是外带的问题，表示留在店里享用。',cold:'解释自己选择堂食的原因：店外的天气很冷。',card:'付款前确认店家是否接受 Mastercard 这一种银行卡。',thanks:'既表达感谢，也夸赞对方待人亲切。',name:'主动报上自己的名字，让闲聊进入自我介绍。','your-name':'向面前的人询问名字，使用自然的 tú 语气。',pleased:'第一次认识对方时，女性说话人表达见面的愉快。',from:'向对方询问来自哪个地方，不是问“现在在哪里”。',china:'先介绍自己的国籍，再补充来自中国的哪座城市。',holiday:'询问对方这次来当地的目的是否是度假。',student:'询问对方的身份是不是学生。',work:'先回答“不是学生”，然后说明这次到巴塞罗那是因为工作。',job:'在认识彼此的闲聊中，询问对方从事什么职业。',say:'已知道英文词 designer，向对方请教它对应的西班牙语。',repeat:'没有听清前面说的词，礼貌地请对方再说一次。',understand:'先表示不好意思，再说明自己还听不懂其中一些词。',months:'说明自己从三个月前开始学西语，现在还在继续学。',meaning:'刚听到 talento 这个西语词，直接询问它的意思。',encourage:'收到对方的夸奖后，感谢她，并说这份鼓励让自己更有信心。'
   };
-  questions.forEach(q=>q.context=contexts[q.id]);
+  const explanations={
+    morning:['意思是“早上好”。','问候语常用复数 buenos días。'],
+    well:['意思是“很好，谢谢”。','muy 加强语气，gracias 表示感谢。'],
+    coffee:['意思是“请给我一杯加奶咖啡”。','café con leche = 加奶咖啡；por favor = 请。'],
+    price:['意思是“肉桂卷多少钱”。','¿Cuánto cuesta…? 用来问单个物品的价格。'],
+    here:['意思是“在这里吃喝”。','para tomar aquí = 堂食；para llevar = 带走。'],
+    cold:['意思是“外面很冷”。','天气冷用 hace frío，mucho 表示“很”。'],
+    card:['意思是“你们收 Mastercard 吗”。','aceptáis 对应 vosotros；礼貌用 ustedes 时说 aceptan。'],
+    thanks:['意思是“非常感谢，你真好”。','¡Qué + 形容词! 表示“真……”。'],
+    name:['意思是“我叫 Jasmine”。','me llamo = 我叫，me 和 llamo 一起记。'],
+    'your-name':['意思是“你叫什么名字”。','te llamas = 你叫；me llamo = 我叫。'],
+    pleased:['意思是“很高兴认识你”。','女性说 encantada，男性说 encantado。'],
+    from:['意思是“你来自哪里”。','ser de + 地点，表示来自哪里。'],
+    china:['意思是“我是中国人，来自广州”。','国籍词 china / chino 小写；国家名 China 大写。'],
+    holiday:['意思是“你来这里度假吗”。','estar aquí = 在这里；de vacaciones = 度假。'],
+    student:['意思是“你是学生吗”。','ser + 身份；estudiante 的男女词形相同。'],
+    work:['意思是“不是，我来这里出差”。','por trabajo = 因为工作；No 回应前一个问题。'],
+    job:['意思是“你做什么工作”。','¿A qué te dedicas? 用来询问职业。'],
+    say:['意思是“Designer 用西班牙语怎么说”。','¿Cómo se dice… en español? 用来询问西语说法。'],
+    repeat:['意思是“请再说一遍，好吗”。','poder 变位后接原形：puedes repetir。'],
+    understand:['意思是“不好意思，有些词我听不懂”。','lo siento = 抱歉；no 放在 entiendo 前表示否定。'],
+    months:['意思是“我学西班牙语三个月了”。','llevar + 时间 + 动名词，表示持续到现在。'],
+    meaning:['意思是“Talento 是什么意思”。','¿Qué significa…? 用来询问词义。'],
+    encourage:['意思是“谢谢，你让我备受鼓舞”。','me = 我；animas = 你鼓励；mucho = 很多。']
+  };
+  const extraAnswers={
+    coffee:['Quiero un café con leche por favor','Me pones un café con leche por favor'],
+    here:['Para aquí'],
+    pleased:['Encantado','Encantado de conocerte'],
+    china:['Soy china soy de Guangzhou','Yo soy china de Guangzhou','Yo soy china soy de Guangzhou','Yo soy china y soy de Guangzhou','Soy chino de Guangzhou','Soy chino soy de Guangzhou','Soy chino y soy de Guangzhou','Soy chino y de Guangzhou','Yo soy chino de Guangzhou','Yo soy chino soy de Guangzhou','Yo soy chino y soy de Guangzhou'],
+    job:['En qué trabajas','De qué trabajas'],
+    months:['Estudio español desde hace tres meses','Hace tres meses que estudio español']
+  };
+  questions.forEach(q=>{
+    q.context=contexts[q.id];
+    q.zh=q.zh.replace(/（[^）]*）|\([^)]*\)/g,'').trim();
+    q.explanation=explanations[q.id];
+    q.answers.push(...(extraAnswers[q.id]||[]));
+  });
   return {id:'barcelona-cafe',title:'在巴塞罗那，聊起第一句西语',scenes,grammar,verbs,nouns,phrases,questions};
 });
