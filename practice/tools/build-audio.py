@@ -9,7 +9,7 @@ def main():
  if not args.node:raise SystemExit('Provide --node /path/to/node')
  voices=subprocess.run(['/usr/bin/say','-v','?'],capture_output=True,text=True,check=True).stdout
  if not re.search(r'^Mónica\s+es[_-]ES\s',voices,re.M):raise SystemExit('Mónica (es-ES) must be installed; no other voice will be substituted.')
- js="const D=require('./topic-data.js');console.log(JSON.stringify([...D.scenes.flatMap(s=>s.lines.filter(l=>!l.stage).map(l=>l.es)),...D.questions.map(q=>q.display)]));"
+ js="const D=require('./topic-data.js');console.log(JSON.stringify([...D.scenes.flatMap(s=>s.lines.filter(l=>!l.stage).map(l=>l.es)),...D.questions.map(q=>q.display),...D.verbs.flatMap(v=>[v[0],...v[2].split(' / '),...v[3].split(' / ')])]));"
  texts=json.loads(subprocess.run([args.node,'-e',js],cwd=ROOT,capture_output=True,text=True,check=True).stdout)
  unique={key(t):t for t in texts};out=ROOT/'audio';out.mkdir(exist_ok=True)
  prior=ROOT.parent/'audio'/'manifest.json';cached={}
